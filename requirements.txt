@@ -1,0 +1,6 @@
+streamlit>=1.30.0
+pandas>=2.0.0
+plotly>=5.18.0
+reportlab>=4.0.0
+bcrypt>=4.0.1
+sqlite3-api
