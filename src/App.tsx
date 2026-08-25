@@ -36,6 +36,9 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [showQuickAdd, setShowQuickAdd] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   // Initialize theme class on body
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function App() {
   };
 
   // Load initial app data
-  const loadAppData = async (currentUser: User) => {
+  const loadAppData = async (currentUser: User, silent: boolean = false): Promise<boolean> => {
     setLoading(true);
     try {
       const fullData = await api.fetchUserData(currentUser.user_id);
@@ -66,8 +69,12 @@ export default function App() {
         setUser(fullData.user);
         localStorage.setItem('student_tracker_user', JSON.stringify(fullData.user));
       }
+      return true;
     } catch (err: any) {
-      console.error('Error loading app data:', err);
+      if (!silent) {
+        console.warn('Could not load user data, resetting session:', err?.message || err);
+      }
+      return false;
     } finally {
       setLoading(false);
     }
@@ -81,30 +88,32 @@ export default function App() {
         if (storedUser) {
           try {
             const parsed = JSON.parse(storedUser);
-            setUser(parsed);
-            await loadAppData(parsed);
-            return;
-          } catch (e) {
-            console.warn('Stored session invalid or outdated, clearing local session.');
+            if (parsed && parsed.user_id) {
+              const success = await loadAppData(parsed, true);
+              if (success) {
+                return;
+              }
+            }
             localStorage.removeItem('student_tracker_user');
+            setUser(null);
+          } catch (e) {
+            localStorage.removeItem('student_tracker_user');
+            setUser(null);
           }
         }
 
         // Default seed demo user
         try {
           const demoUserRes = await api.login('alex.student@university.edu', 'password123');
-          setUser(demoUserRes.user);
           localStorage.setItem('student_tracker_user', JSON.stringify(demoUserRes.user));
           await loadAppData(demoUserRes.user);
         } catch (loginErr) {
-          console.warn('Demo login failed, attempting auto-registration fallback...', loginErr);
           const regRes = await api.register('Alex Johnson', 'alex.student@university.edu', 'password123');
-          setUser(regRes.user);
           localStorage.setItem('student_tracker_user', JSON.stringify(regRes.user));
           await loadAppData(regRes.user);
         }
       } catch (err) {
-        console.error('Failed to initialize user session:', err);
+        console.warn('Session initialization fallback complete:', err);
         setLoading(false);
       }
     };
@@ -237,17 +246,28 @@ export default function App() {
     setShowAuthModal(true);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('student_tracker_user');
+    setUser(null);
+    setShowAuthModal(true);
+  };
+
   return (
     <div className={`min-h-screen ${theme === 'light' ? 'light bg-slate-50 text-slate-900' : 'dark bg-[#0b1326] text-white'} selection:bg-[#d0bcff] selection:text-[#3c0091] relative overflow-x-hidden font-sans`}>
       {/* Background Animated Blobs */}
       <div className="fixed top-10 left-10 w-96 h-96 bg-[#d0bcff]/15 rounded-full blur-[100px] pointer-events-none animate-pulse" />
       <div className="fixed bottom-10 right-10 w-96 h-96 bg-[#ffb0cd]/15 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
 
-      {/* Persistent Left Sidebar */}
+      {/* Persistent Left Sidebar + Mobile Overlay Drawer + Mobile Bottom Nav */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenQuickAdd={() => setShowQuickAdd(true)}
+        user={user}
+        onLogout={handleLogout}
+        unreadCount={unreadCount}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
       />
 
       {/* Top Header Navigation */}
@@ -261,10 +281,12 @@ export default function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         onMarkNotificationsRead={handleMarkNotificationsRead}
+        mobileOpen={mobileOpen}
+        setMobileOpen={setMobileOpen}
       />
 
       {/* Main View Area */}
-      <main className="lg:ml-64 pt-24 pb-16 px-4 sm:px-8 max-w-7xl mx-auto relative z-10 transition-all duration-300">
+      <main className="lg:ml-64 pt-20 sm:pt-24 pb-28 lg:pb-16 px-3 sm:px-8 max-w-7xl mx-auto relative z-10 transition-all duration-300">
         {loading ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
             <div className="w-12 h-12 rounded-full border-4 border-[#d0bcff] border-t-transparent animate-spin" />

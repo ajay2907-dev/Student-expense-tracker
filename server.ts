@@ -26,6 +26,7 @@ interface User {
   currency: string;
   default_category: string;
   theme: "dark" | "light";
+  budget_rollover_enabled?: boolean;
 }
 
 interface Expense {
@@ -35,6 +36,26 @@ interface Expense {
   category: string;
   date: string;
   description: string;
+  payment_method: string;
+  created_at: string;
+}
+
+interface CategoryLimit {
+  limit_id: string;
+  user_id: string;
+  category: string;
+  limit_amount: number;
+  created_at: string;
+}
+
+interface RecurringExpense {
+  recurring_id: string;
+  user_id: string;
+  name: string;
+  amount: number;
+  category: string;
+  frequency: "daily" | "weekly" | "monthly";
+  start_date: string;
   payment_method: string;
   created_at: string;
 }
@@ -70,42 +91,63 @@ interface DatabaseSchema {
   users: User[];
   expenses: Expense[];
   budgets: Budget[];
+  category_limits: CategoryLimit[];
+  recurring_expenses: RecurringExpense[];
   savings_goals: SavingsGoal[];
   notifications: Notification[];
 }
 
 function loadDB(): DatabaseSchema {
+  const defaultDB: DatabaseSchema = {
+    users: [],
+    expenses: [],
+    budgets: [],
+    category_limits: [],
+    recurring_expenses: [],
+    savings_goals: [],
+    notifications: [],
+  };
+
   if (!fs.existsSync(dbFilePath)) {
-    const initialDB: DatabaseSchema = {
-      users: [],
-      expenses: [],
-      budgets: [],
-      savings_goals: [],
-      notifications: [],
-    };
-    fs.writeFileSync(dbFilePath, JSON.stringify(initialDB, null, 2));
-    return initialDB;
+    fs.writeFileSync(dbFilePath, JSON.stringify(defaultDB, null, 2));
+    return defaultDB;
   }
+
   try {
-    const data = fs.readFileSync(dbFilePath, "utf-8");
-    return JSON.parse(data);
+    const raw = fs.readFileSync(dbFilePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      users: Array.isArray(parsed.users) ? parsed.users : [],
+      expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
+      budgets: Array.isArray(parsed.budgets) ? parsed.budgets : [],
+      category_limits: Array.isArray(parsed.category_limits) ? parsed.category_limits : [],
+      recurring_expenses: Array.isArray(parsed.recurring_expenses) ? parsed.recurring_expenses : [],
+      savings_goals: Array.isArray(parsed.savings_goals) ? parsed.savings_goals : [],
+      notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+    };
   } catch (e) {
     console.error("Error reading database:", e);
-    return { users: [], expenses: [], budgets: [], savings_goals: [], notifications: [] };
+    return defaultDB;
   }
 }
 
 function saveDB(db: DatabaseSchema) {
-  fs.writeFileSync(dbFilePath, JSON.stringify(db, null, 2));
+  try {
+    fs.writeFileSync(dbFilePath, JSON.stringify(db, null, 2));
+  } catch (e) {
+    console.error("Error saving database:", e);
+  }
 }
 
 // Demo data generator helper
 function generateDemoDataForUser(userId: string) {
   const db = loadDB();
 
-  // Remove existing user expenses, budgets, goals, notifications
+  // Remove existing user data
   db.expenses = db.expenses.filter((e) => e.user_id !== userId);
   db.budgets = db.budgets.filter((b) => b.user_id !== userId);
+  db.category_limits = db.category_limits.filter((c) => c.user_id !== userId);
+  db.recurring_expenses = db.recurring_expenses.filter((r) => r.user_id !== userId);
   db.savings_goals = db.savings_goals.filter((g) => g.user_id !== userId);
   db.notifications = db.notifications.filter((n) => n.user_id !== userId);
 
@@ -115,7 +157,7 @@ function generateDemoDataForUser(userId: string) {
   const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, "0")}`;
 
-  // Monthly Budget
+  // Monthly Budgets
   db.budgets.push({
     budget_id: "b_" + Date.now() + "_1",
     user_id: userId,
@@ -131,6 +173,57 @@ function generateDemoDataForUser(userId: string) {
     amount: 15000,
     created_at: new Date().toISOString(),
   });
+
+  // Category Limits
+  db.category_limits.push(
+    {
+      limit_id: "cl_" + Date.now() + "_1",
+      user_id: userId,
+      category: "Food",
+      limit_amount: 5000,
+      created_at: new Date().toISOString(),
+    },
+    {
+      limit_id: "cl_" + Date.now() + "_2",
+      user_id: userId,
+      category: "Education",
+      limit_amount: 3000,
+      created_at: new Date().toISOString(),
+    },
+    {
+      limit_id: "cl_" + Date.now() + "_3",
+      user_id: userId,
+      category: "Entertainment",
+      limit_amount: 2000,
+      created_at: new Date().toISOString(),
+    }
+  );
+
+  // Recurring Expenses
+  db.recurring_expenses.push(
+    {
+      recurring_id: "rec_" + Date.now() + "_1",
+      user_id: userId,
+      name: "Campus Hostel Rent",
+      amount: 4500,
+      category: "Personal",
+      frequency: "monthly",
+      start_date: `${currentMonthStr}-01`,
+      payment_method: "Bank Transfer",
+      created_at: new Date().toISOString(),
+    },
+    {
+      recurring_id: "rec_" + Date.now() + "_2",
+      user_id: userId,
+      name: "Mobile Internet Recharge",
+      amount: 299,
+      category: "Mobile/Internet",
+      frequency: "monthly",
+      start_date: `${currentMonthStr}-05`,
+      payment_method: "UPI",
+      created_at: new Date().toISOString(),
+    }
+  );
 
   // Sample expenses
   const sampleExpenses = [
@@ -222,7 +315,7 @@ function generateDemoDataForUser(userId: string) {
   saveDB(db);
 }
 
-function ensureDemoUserExists() {
+function ensureDemoUserExists(): User {
   const db = loadDB();
   const demoEmail = "alex.student@university.edu";
   let demoUser = db.users.find((u) => u.email.toLowerCase() === demoEmail.toLowerCase());
@@ -241,12 +334,14 @@ function ensureDemoUserExists() {
       currency: "₹",
       default_category: "Food",
       theme: "dark",
+      budget_rollover_enabled: true,
     };
 
     db.users.push(demoUser);
     saveDB(db);
     generateDemoDataForUser(userId);
     console.log("Demo user initialized: alex.student@university.edu");
+    return demoUser;
   } else {
     // Ensure password123 is valid
     const isPasswordValid = bcrypt.compareSync("password123", demoUser.password_hash);
@@ -254,6 +349,7 @@ function ensureDemoUserExists() {
       demoUser.password_hash = bcrypt.hashSync("password123", bcrypt.genSaltSync(10));
       saveDB(db);
     }
+    return demoUser;
   }
 }
 
@@ -285,6 +381,7 @@ app.post("/api/auth/register", async (req, res) => {
     currency: "₹",
     default_category: "Food",
     theme: "dark",
+    budget_rollover_enabled: true,
   };
 
   db.users.push(newUser);
@@ -304,8 +401,15 @@ app.post("/api/auth/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required" });
   }
 
-  const db = loadDB();
-  const user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  let db = loadDB();
+  let user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+
+  if (!user && email.toLowerCase() === "alex.student@university.edu") {
+    ensureDemoUserExists();
+    db = loadDB();
+    user = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+  }
+
   if (!user) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
@@ -322,17 +426,25 @@ app.post("/api/auth/login", async (req, res) => {
 // Get User Profile & Full App Data
 app.get("/api/user/:userId/data", (req, res) => {
   const { userId } = req.params;
-  const db = loadDB();
+  let db = loadDB();
 
-  const user = db.users.find((u) => u.user_id === userId);
+  let user = db.users.find((u) => u.user_id === userId);
+  if (!user && (userId === "user_demo_alex" || db.users.length === 0)) {
+    ensureDemoUserExists();
+    db = loadDB();
+    user = db.users.find((u) => u.user_id === userId) || db.users.find((u) => u.user_id === "user_demo_alex");
+  }
+
   if (!user) {
     return res.status(404).json({ error: "User not found" });
   }
 
-  const userExpenses = db.expenses.filter((e) => e.user_id === userId);
-  const userBudgets = db.budgets.filter((b) => b.user_id === userId);
-  const userGoals = db.savings_goals.filter((g) => g.user_id === userId);
-  const userNotifications = db.notifications.filter((n) => n.user_id === userId);
+  const userExpenses = db.expenses.filter((e) => e.user_id === user.user_id);
+  const userBudgets = db.budgets.filter((b) => b.user_id === user.user_id);
+  const userCategoryLimits = db.category_limits.filter((c) => c.user_id === user.user_id);
+  const userRecurringExpenses = db.recurring_expenses.filter((r) => r.user_id === user.user_id);
+  const userGoals = db.savings_goals.filter((g) => g.user_id === user.user_id);
+  const userNotifications = db.notifications.filter((n) => n.user_id === user.user_id);
 
   const { password_hash: _, ...safeUser } = user;
 
@@ -340,6 +452,8 @@ app.get("/api/user/:userId/data", (req, res) => {
     user: safeUser,
     expenses: userExpenses,
     budgets: userBudgets,
+    category_limits: userCategoryLimits,
+    recurring_expenses: userRecurringExpenses,
     savings_goals: userGoals,
     notifications: userNotifications,
   });
@@ -443,19 +557,114 @@ app.post("/api/budgets", (req, res) => {
 
   const db = loadDB();
   const existingIdx = db.budgets.findIndex((b) => b.user_id === user_id && b.month === month);
+  let savedBudget: Budget;
 
   if (existingIdx !== -1) {
     db.budgets[existingIdx].amount = Number(amount);
+    savedBudget = db.budgets[existingIdx];
   } else {
-    db.budgets.push({
+    savedBudget = {
       budget_id: "b_" + Date.now(),
       user_id,
       month,
       amount: Number(amount),
       created_at: new Date().toISOString(),
+    };
+    db.budgets.push(savedBudget);
+  }
+
+  saveDB(db);
+  res.json({ success: true, budget: savedBudget });
+});
+
+// Category Limits CRUD
+app.post("/api/category-limits", (req, res) => {
+  const { user_id, category, limit_amount } = req.body;
+  if (!user_id || !category || !limit_amount || limit_amount <= 0) {
+    return res.status(400).json({ error: "Valid category and positive limit amount required." });
+  }
+
+  const db = loadDB();
+  const existingIdx = db.category_limits.findIndex((c) => c.user_id === user_id && c.category === category);
+  
+  if (existingIdx !== -1) {
+    db.category_limits[existingIdx].limit_amount = Number(limit_amount);
+  } else {
+    db.category_limits.push({
+      limit_id: "cl_" + Date.now(),
+      user_id,
+      category,
+      limit_amount: Number(limit_amount),
+      created_at: new Date().toISOString(),
     });
   }
 
+  saveDB(db);
+  const userLimits = db.category_limits.filter((c) => c.user_id === user_id);
+  res.json({ success: true, category_limits: userLimits });
+});
+
+app.delete("/api/category-limits/:limitId", (req, res) => {
+  const { limitId } = req.params;
+  const db = loadDB();
+  db.category_limits = db.category_limits.filter((c) => c.limit_id !== limitId);
+  saveDB(db);
+  res.json({ success: true });
+});
+
+// Recurring Expenses CRUD
+app.post("/api/recurring-expenses", (req, res) => {
+  const { user_id, name, amount, category, frequency, start_date, payment_method } = req.body;
+  if (!user_id || !name || !amount || amount <= 0 || !category) {
+    return res.status(400).json({ error: "Name, category, and positive amount required." });
+  }
+
+  const db = loadDB();
+  const newRec: RecurringExpense = {
+    recurring_id: "rec_" + Date.now(),
+    user_id,
+    name,
+    amount: Number(amount),
+    category,
+    frequency: frequency || "monthly",
+    start_date: start_date || new Date().toISOString().split("T")[0],
+    payment_method: payment_method || "UPI",
+    created_at: new Date().toISOString(),
+  };
+
+  db.recurring_expenses.push(newRec);
+  saveDB(db);
+  res.json({ success: true, recurring: newRec });
+});
+
+app.put("/api/recurring-expenses/:recurringId", (req, res) => {
+  const { recurringId } = req.params;
+  const { name, amount, category, frequency, start_date, payment_method } = req.body;
+
+  const db = loadDB();
+  const idx = db.recurring_expenses.findIndex((r) => r.recurring_id === recurringId);
+  if (idx === -1) {
+    return res.status(404).json({ error: "Recurring expense not found" });
+  }
+
+  db.recurring_expenses[idx] = {
+    ...db.recurring_expenses[idx],
+    name: name ?? db.recurring_expenses[idx].name,
+    amount: amount !== undefined ? Number(amount) : db.recurring_expenses[idx].amount,
+    category: category ?? db.recurring_expenses[idx].category,
+    frequency: frequency ?? db.recurring_expenses[idx].frequency,
+    start_date: start_date ?? db.recurring_expenses[idx].start_date,
+    payment_method: payment_method ?? db.recurring_expenses[idx].payment_method,
+  };
+
+  saveDB(db);
+  res.json({ success: true, recurring: db.recurring_expenses[idx] });
+});
+
+app.delete("/api/recurring-expenses/:recurringId", (req, res) => {
+  const { recurringId } = req.params;
+  const db = loadDB();
+  db.recurring_expenses = db.recurring_expenses.filter((r) => r.recurring_id !== recurringId);
   saveDB(db);
   res.json({ success: true });
 });
@@ -534,7 +743,7 @@ app.put("/api/notifications/read", (req, res) => {
 // Update Profile & Settings
 app.put("/api/user/:userId/settings", async (req, res) => {
   const { userId } = req.params;
-  const { name, email, currency, default_category, theme, new_password } = req.body;
+  const { name, email, currency, default_category, theme, budget_rollover_enabled, new_password } = req.body;
 
   const db = loadDB();
   const user = db.users.find((u) => u.user_id === userId);
@@ -547,6 +756,7 @@ app.put("/api/user/:userId/settings", async (req, res) => {
   if (currency) user.currency = currency;
   if (default_category) user.default_category = default_category;
   if (theme) user.theme = theme;
+  if (budget_rollover_enabled !== undefined) user.budget_rollover_enabled = budget_rollover_enabled;
 
   if (new_password && new_password.trim().length > 0) {
     const salt = await bcrypt.genSalt(10);
@@ -572,6 +782,25 @@ app.post("/api/user/:userId/reset", (req, res) => {
 
   db.expenses = db.expenses.filter((e) => e.user_id !== userId);
   db.budgets = db.budgets.filter((b) => b.user_id !== userId);
+  db.category_limits = db.category_limits.filter((c) => c.user_id !== userId);
+  db.recurring_expenses = db.recurring_expenses.filter((r) => r.user_id !== userId);
+  db.savings_goals = db.savings_goals.filter((g) => g.user_id !== userId);
+  db.notifications = db.notifications.filter((n) => n.user_id !== userId);
+
+  saveDB(db);
+  res.json({ success: true });
+});
+
+// Delete User Account
+app.delete("/api/user/:userId", (req, res) => {
+  const { userId } = req.params;
+  const db = loadDB();
+
+  db.users = db.users.filter((u) => u.user_id !== userId);
+  db.expenses = db.expenses.filter((e) => e.user_id !== userId);
+  db.budgets = db.budgets.filter((b) => b.user_id !== userId);
+  db.category_limits = db.category_limits.filter((c) => c.user_id !== userId);
+  db.recurring_expenses = db.recurring_expenses.filter((r) => r.user_id !== userId);
   db.savings_goals = db.savings_goals.filter((g) => g.user_id !== userId);
   db.notifications = db.notifications.filter((n) => n.user_id !== userId);
 
