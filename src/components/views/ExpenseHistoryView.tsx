@@ -9,10 +9,12 @@ import {
   X,
   CreditCard,
   Download,
-  Receipt
+  Receipt,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { User, Expense, DateRangePreset } from '../../types';
-import { formatCurrency } from '../../lib/api';
+import { formatCurrency, api } from '../../lib/api';
 import { filterExpensesByPreset } from '../../lib/dateUtils';
 import { ConfirmModal } from '../ConfirmModal';
 
@@ -59,6 +61,22 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
   // Modals
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [suggestingEdit, setSuggestingEdit] = useState<boolean>(false);
+
+  const handleSuggestCategoryForEdit = async () => {
+    if (!editingExpense || !editingExpense.description?.trim()) return;
+    try {
+      setSuggestingEdit(true);
+      const res = await api.suggestCategory(editingExpense.description);
+      if (res?.category) {
+        setEditingExpense((prev) => (prev ? { ...prev, category: res.category } : null));
+      }
+    } catch (err) {
+      console.warn('Failed to suggest category for edit:', err);
+    } finally {
+      setSuggestingEdit(false);
+    }
+  };
 
   // Date Presets
   const presetsList: { id: DateRangePreset; label: string }[] = [
@@ -408,7 +426,18 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Description</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold uppercase text-[#cbc3d7]">Description</label>
+                  <button
+                    type="button"
+                    onClick={handleSuggestCategoryForEdit}
+                    disabled={suggestingEdit || !editingExpense.description?.trim()}
+                    className="text-[11px] text-[#d0bcff] hover:text-[#d0bcff]/80 font-bold flex items-center gap-1 disabled:opacity-40"
+                  >
+                    {suggestingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    <span>AI Re-Categorize</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   value={editingExpense.description}

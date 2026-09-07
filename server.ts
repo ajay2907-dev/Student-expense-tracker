@@ -3,6 +3,29 @@ import path from "path";
 import fs from "fs";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
+import { GoogleGenAI, Type } from "@google/genai";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+let aiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+  if (!aiClient) {
+    aiClient = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          "User-Agent": "aistudio-build",
+        },
+      },
+    });
+  }
+  return aiClient;
+}
 
 const app = express();
 const PORT = 3000;
@@ -806,6 +829,144 @@ app.delete("/api/user/:userId", (req, res) => {
 
   saveDB(db);
   res.json({ success: true });
+});
+
+// Heuristic fallback for category suggestion
+function ruleBasedCategorySuggestion(text: string): { category: string; confidence: number; reason: string } {
+  const lower = text.toLowerCase();
+
+  // Food
+  if (/\b(food|lunch|dinner|breakfast|snack|snacks|canteen|mess|cafe|coffee|tea|chai|pizza|burger|swiggy|zomato|starbucks|mcdonald|kfc|subway|domino|bakery|grocer|groceries|restaurant|dosa|biryani|eat|meal|supermarket|ice cream|shawarma|chole)\b/i.test(lower)) {
+    return { category: "Food", confidence: 0.9, reason: "Matched dining, mess, cafe, or food keywords" };
+  }
+
+  // Transportation
+  if (/\b(uber|ola|rapido|metro|bus|train|irctc|cab|taxi|auto|rickshaw|flight|indigo|air|petrol|diesel|fuel|gas|fare|ticket|transit|commute|toll|parking|scooter|bike)\b/i.test(lower)) {
+    return { category: "Transportation", confidence: 0.9, reason: "Matched transit, ride-share, or commute keywords" };
+  }
+
+  // Education
+  if (/\b(book|books|textbook|course|courses|udemy|coursera|tuition|exam|exams|college|university|school|stationery|pen|pencil|notebook|paper|library|lab|xerox|photocopy|print|printing|edx|class|fee|fees|semester)\b/i.test(lower)) {
+    return { category: "Education", confidence: 0.9, reason: "Matched academic, tuition, or study materials" };
+  }
+
+  // Entertainment
+  if (/\b(movie|movies|cinema|film|pvr|inox|theatre|netflix|spotify|disney|prime video|youtube|game|gaming|steam|playstation|xbox|concert|club|party|bowling|arcade|show)\b/i.test(lower)) {
+    return { category: "Entertainment", confidence: 0.9, reason: "Matched movies, games, or entertainment" };
+  }
+
+  // Mobile/Internet
+  if (/\b(recharge|jio|airtel|vi|vodafone|bsnl|broadband|wifi|internet|data|mobile data|cellular|fiber|telecom|phone bill)\b/i.test(lower)) {
+    return { category: "Mobile/Internet", confidence: 0.9, reason: "Matched cellular, data, or internet recharge" };
+  }
+
+  // Shopping
+  if (/\b(amazon|flipkart|myntra|zara|h&m|clothes|clothing|shirt|t-shirt|pants|jeans|shoes|sneakers|electronics|gadget|gadgets|mall|store|buy|purchase|dress|jacket|hoodie|watch)\b/i.test(lower)) {
+    return { category: "Shopping", confidence: 0.85, reason: "Matched retail, electronics, or shopping" };
+  }
+
+  // Personal
+  if (/\b(haircut|salon|barber|grooming|pharmacy|medicine|medicines|doctor|clinic|hospital|apollo|gym|fitness|rent|hostel|room|laundry|dry clean|soap|shampoo|skincare|dentist)\b/i.test(lower)) {
+    return { category: "Personal", confidence: 0.85, reason: "Matched personal care, hostel rent, or health" };
+  }
+
+  return { category: "Other", confidence: 0.5, reason: "General transaction expense" };
+}
+
+// AI Category Suggestion using Gemini API
+app.post("/api/ai/suggest-category", async (req, res) => {
+  const { text, merchant, description } = req.body;
+  const inputStr = [merchant, description, text].filter(Boolean).join(" - ").trim();
+
+  if (!inputStr) {
+    return res.json({
+      category: "Food",
+      confidence: 0,
+      reason: "No merchant or description provided",
+      source: "rule_fallback",
+    });
+  }
+
+  const ai = getGeminiClient();
+  if (ai) {
+    try {
+      const prompt = `You are an expense categorization assistant for a university student expense tracker.
+Categorize this transaction into ONE of these exact categories:
+- Food: restaurants, dining, campus mess, cafe, bakery, coffee, snacks, groceries, Swiggy, Zomato, Starbucks, McDonald's, KFC
+- Transportation: bus, train, metro, auto, cab, bike, fuel, Uber, Ola, Rapido, flight
+- Education: tuition, college fees, books, textbooks, stationery, online courses (Udemy, Coursera), exams, lab equipment
+- Shopping: clothing, shoes, fashion, electronics, gadgets, Amazon, Flipkart, accessories
+- Entertainment: movies, cinema, concerts, Netflix, Spotify, streaming, gaming, outings, party
+- Personal: hostel rent, haircut, grooming, gym, pharmacy, medical, laundry, personal care
+- Mobile/Internet: phone recharge, cellular data, WiFi, broadband, Jio, Airtel, Vi
+- Other: miscellaneous expenses not fitting the above
+
+Merchant / Transaction: "${inputStr}"
+
+Output JSON with:
+- category: strictly one of ["Food", "Transportation", "Education", "Shopping", "Entertainment", "Personal", "Mobile/Internet", "Other"]
+- confidence: number between 0.0 and 1.0
+- reason: concise explanation (under 10 words) why this category fits`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              category: {
+                type: Type.STRING,
+                enum: [
+                  "Food",
+                  "Transportation",
+                  "Education",
+                  "Shopping",
+                  "Entertainment",
+                  "Personal",
+                  "Mobile/Internet",
+                  "Other",
+                ],
+                description: "The most fitting category",
+              },
+              confidence: {
+                type: Type.NUMBER,
+                description: "Confidence from 0 to 1",
+              },
+              reason: {
+                type: Type.STRING,
+                description: "Short reason for category",
+              },
+            },
+            required: ["category", "confidence", "reason"],
+          },
+        },
+      });
+
+      const responseText = response.text;
+      if (responseText) {
+        const parsed = JSON.parse(responseText.trim());
+        if (parsed && parsed.category) {
+          return res.json({
+            category: parsed.category,
+            confidence: parsed.confidence ?? 0.95,
+            reason: parsed.reason ?? "Identified by Gemini AI",
+            source: "gemini",
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn("Gemini API category suggestion error:", err?.message || err);
+    }
+  }
+
+  // Fallback heuristic if Gemini API key is unset or error occurs
+  const fallback = ruleBasedCategorySuggestion(inputStr);
+  return res.json({
+    ...fallback,
+    source: "rule_fallback",
+  });
 });
 
 // Start server function

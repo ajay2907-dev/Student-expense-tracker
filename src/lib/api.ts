@@ -198,12 +198,31 @@ export async function deleteUserAccountApi(userId: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete account');
 }
 
+export interface CategorySuggestionResponse {
+  category: string;
+  confidence: number;
+  reason: string;
+  source: 'gemini' | 'rule_fallback';
+}
+
+export async function suggestCategoryApi(text: string, merchant?: string): Promise<CategorySuggestionResponse> {
+  const res = await fetch(`${API_BASE}/ai/suggest-category`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, merchant }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to get category suggestion');
+  return data;
+}
+
 // Convenient unified API object
 export const api = {
   register: registerUser,
   login: loginUser,
   getUserData: fetchUserData,
   fetchUserData: fetchUserData,
+  suggestCategory: suggestCategoryApi,
   getExpenses: async (userId: string) => {
     const data = await fetchUserData(userId);
     return data.expenses;

@@ -1,6 +1,6 @@
 {
   "name": "Student Expense Tracker",
-  "description": "A comprehensive financial tracker for university students with expense management, budget alerts, analytics, savings goals, PDF reports, and multi-currency support.",
+  "description": "A comprehensive financial tracker for university students with AI-powered category suggestions via Gemini API, expense management, budget alerts, analytics, savings goals, and multi-currency support.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
