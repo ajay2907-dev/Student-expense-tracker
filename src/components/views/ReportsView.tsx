@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { User, Expense, Budget } from '../../types';
 import { formatCurrency } from '../../lib/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface ReportsViewProps {
   user: User;
@@ -12,8 +13,24 @@ interface ReportsViewProps {
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budgets }) => {
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    format,
+    preferredCurrencySymbol,
+    preferredCurrencyCode,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
   const currentMonthStr = new Date().toISOString().substring(0, 7);
+
+  // Converted datasets for user's preferred currency
+  const displayExpenses = React.useMemo(
+    () => expenses.map((e) => ({ ...e, amount: convert(e.amount) })),
+    [expenses, convert]
+  );
+  const displayBudgets = React.useMemo(
+    () => budgets.map((b) => ({ ...b, amount: convert(b.amount) })),
+    [budgets, convert]
+  );
 
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
@@ -23,14 +40,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
   const handleDownloadCsv = () => {
     setDownloadingCsv(true);
     try {
-      const headers = ['Expense ID', 'Date', 'Description', 'Category', 'Payment Method', 'Amount'];
-      const rows = expenses.map((e) => [
+      const headers = ['Expense ID', 'Date', 'Description', 'Category', 'Payment Method', `Amount (${preferredCurrencyCode})`];
+      const rows = displayExpenses.map((e) => [
         e.expense_id,
         e.date,
         `"${e.description.replace(/"/g, '""')}"`,
         e.category,
         e.payment_method,
-        e.amount,
+        e.amount.toFixed(2),
       ]);
 
       const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -38,7 +55,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `student_expenses_${currentMonthStr}.csv`);
+      link.setAttribute('download', `student_expenses_${currentMonthStr}_${preferredCurrencyCode}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -67,21 +84,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
       doc.setTextColor(70, 70, 70);
       doc.text(`User Name: ${user.name} (${user.email})`, 14, 28);
       doc.text(`Statement Period: ${currentMonthStr}`, 14, 34);
+      doc.text(`Currency: ${preferredCurrencyCode} (${currency})`, 14, 40);
 
       // Financial Summary Box
-      const budgetObj = budgets.find((b) => b.month === currentMonthStr);
-      const budgetAmt = budgetObj ? budgetObj.amount : 15000;
-      const monthExpenses = expenses.filter((e) => e.date.startsWith(currentMonthStr));
+      const budgetObj = displayBudgets.find((b) => b.month === currentMonthStr);
+      const budgetAmt = budgetObj ? budgetObj.amount : Math.round(convert(15000));
+      const monthExpenses = displayExpenses.filter((e) => e.date.startsWith(currentMonthStr));
       const totalSpent = monthExpenses.reduce((s, e) => s + e.amount, 0);
 
       autoTable(doc, {
-        startY: 42,
+        startY: 46,
         head: [['Monthly Budget', 'Total Spent', 'Remaining Balance', 'Recorded Items']],
         body: [
           [
-            `${currency}${budgetAmt.toLocaleString()}`,
-            `${currency}${totalSpent.toLocaleString()}`,
-            `${currency}${(budgetAmt - totalSpent).toLocaleString()}`,
+            `${currency}${budgetAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `${currency}${totalSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            `${currency}${(budgetAmt - totalSpent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             `${monthExpenses.length}`,
           ],
         ],
@@ -94,12 +112,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
       doc.setTextColor(20, 20, 20);
       doc.text('Transaction Breakdown History', 14, (doc as any).lastAutoTable.finalY + 12);
 
-      const tableRows = expenses.slice(0, 40).map((e) => [
+      const tableRows = displayExpenses.slice(0, 40).map((e) => [
         e.date,
         e.description || e.category,
         e.category,
         e.payment_method,
-        `${currency}${e.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        `${currency}${e.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       ]);
 
       autoTable(doc, {
@@ -110,7 +128,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
         headStyles: { fillColor: [35, 45, 70], textColor: [255, 255, 255] },
       });
 
-      doc.save(`expense_statement_${user.name.replace(/\s+/g, '_')}_${currentMonthStr}.pdf`);
+      doc.save(`expense_statement_${user.name.replace(/\s+/g, '_')}_${currentMonthStr}_${preferredCurrencyCode}.pdf`);
       setSuccessMsg('PDF financial statement downloaded successfully!');
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {

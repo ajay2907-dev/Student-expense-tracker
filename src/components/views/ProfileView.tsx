@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { User as UserIcon, Mail, DollarSign, Tag, Save, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User as UserIcon, Mail, DollarSign, Tag, Save, CheckCircle2, Coins } from 'lucide-react';
 import { User } from '../../types';
+import { SUPPORTED_CURRENCIES, normalizeCurrencyCode } from '../../lib/exchangeRates';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface ProfileViewProps {
   user: User;
@@ -8,12 +10,19 @@ interface ProfileViewProps {
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUserSettings }) => {
+  const { setCurrency: setContextCurrency, preferredCurrencyCode } = useCurrency();
   const [name, setName] = useState<string>(user.name);
   const [email, setEmail] = useState<string>(user.email);
-  const [currency, setCurrency] = useState<string>(user.currency || '₹');
+  const [currency, setCurrency] = useState<string>(user.currency ? normalizeCurrencyCode(user.currency) : 'INR');
   const [defaultCategory, setDefaultCategory] = useState<string>(user.default_category || 'Food');
   const [loading, setLoading] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user.currency) {
+      setCurrency(normalizeCurrencyCode(user.currency));
+    }
+  }, [user.currency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +34,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUserSett
         currency,
         default_category: defaultCategory,
       });
-      setSuccessMsg('Profile updated successfully!');
+      await setContextCurrency(currency);
+      setSuccessMsg('Profile and display currency updated successfully!');
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
       alert(err.message || 'Failed to update profile');
@@ -96,16 +106,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdateUserSett
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Currency Symbol</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">
+                Preferred Currency (Exchange Rates Supported)
+              </label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full bg-[#171f33] light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-2xl px-4 py-3 text-white light:text-slate-900 font-bold text-sm focus:outline-none focus:border-[#d0bcff]"
               >
-                <option value="₹">₹ - Indian Rupee (INR)</option>
-                <option value="$">$ - US Dollar (USD)</option>
-                <option value="€">€ - Euro (EUR)</option>
-                <option value="£">£ - British Pound (GBP)</option>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.code} ({c.symbol}) - {c.name}
+                  </option>
+                ))}
               </select>
             </div>
 

@@ -17,6 +17,7 @@ import { User, Expense, DateRangePreset } from '../../types';
 import { formatCurrency, api } from '../../lib/api';
 import { filterExpensesByPreset } from '../../lib/dateUtils';
 import { ConfirmModal } from '../ConfirmModal';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface ExpenseHistoryViewProps {
   user: User;
@@ -48,7 +49,22 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
   searchQuery,
   setSearchQuery,
 }) => {
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    format,
+    preferredCurrencySymbol,
+    preferredCurrencyCode,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
+
+  // Converted dataset for preferred currency
+  const displayExpenses = useMemo(() => {
+    return expenses.map((e) => ({
+      ...e,
+      amount: convert(e.amount),
+    }));
+  }, [expenses, convert]);
 
   // Filter & Sort States
   const [preset, setPreset] = useState<DateRangePreset>('all');
@@ -93,7 +109,7 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
 
   // Search by Description, Category, Payment Method, AND Amount
   const filteredExpenses = useMemo(() => {
-    const timeFiltered = filterExpensesByPreset(expenses, preset, customStart, customEnd);
+    const timeFiltered = filterExpensesByPreset(displayExpenses, preset, customStart, customEnd);
 
     return timeFiltered
       .filter((e) => {
@@ -103,7 +119,7 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
           const matchDesc = (e.description || '').toLowerCase().includes(query);
           const matchCat = (e.category || '').toLowerCase().includes(query);
           const matchPay = (e.payment_method || '').toLowerCase().includes(query);
-          const matchAmt = String(e.amount).includes(query);
+          const matchAmt = String(Math.round(e.amount)).includes(query) || String(e.amount.toFixed(2)).includes(query);
           matchesSearch = matchDesc || matchCat || matchPay || matchAmt;
         }
 
@@ -119,19 +135,19 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
         if (sortBy === 'amount-asc') return a.amount - b.amount;
         return 0;
       });
-  }, [expenses, preset, customStart, customEnd, searchQuery, selectedCategory, selectedPayment, sortBy]);
+  }, [displayExpenses, preset, customStart, customEnd, searchQuery, selectedCategory, selectedPayment, sortBy]);
 
   // Export CSV
   const handleExportCSV = () => {
     if (filteredExpenses.length === 0) return;
-    const headers = ['Expense ID', 'Date', 'Description', 'Category', 'Payment Method', 'Amount'];
+    const headers = ['Expense ID', 'Date', 'Description', 'Category', 'Payment Method', `Amount (${preferredCurrencyCode})`];
     const rows = filteredExpenses.map((e) => [
       e.expense_id,
       e.date,
       `"${(e.description || '').replace(/"/g, '""')}"`,
       e.category,
       e.payment_method,
-      e.amount,
+      e.amount.toFixed(2),
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -147,8 +163,9 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
   const handleSaveEdit = async () => {
     if (!editingExpense) return;
     try {
+      const baseAmt = convertToBase(Number(editingExpense.amount));
       await onUpdateExpense(editingExpense.expense_id, {
-        amount: Number(editingExpense.amount),
+        amount: baseAmt,
         category: editingExpense.category,
         date: editingExpense.date,
         description: editingExpense.description,

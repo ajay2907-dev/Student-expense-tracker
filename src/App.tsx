@@ -20,6 +20,7 @@ import { AuthModal } from './components/AuthModal';
 
 import { api } from './lib/api';
 import { User, Expense, Budget, SavingsGoal, Notification, ActiveTab, CategoryLimit, RecurringExpense } from './types';
+import { CurrencyProvider } from './context/CurrencyContext';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -254,7 +255,8 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen ${theme === 'light' ? 'light bg-slate-50 text-slate-900' : 'dark bg-[#0b1326] text-white'} selection:bg-[#d0bcff] selection:text-[#3c0091] relative overflow-x-hidden font-sans`}>
+    <CurrencyProvider userCurrency={user?.currency} onUpdateUserSettings={handleUpdateUserSettings}>
+      <div className={`min-h-screen ${theme === 'light' ? 'light bg-slate-50 text-slate-900' : 'dark bg-[#0b1326] text-white'} selection:bg-[#d0bcff] selection:text-[#3c0091] relative overflow-x-hidden font-sans`}>
       {/* Background Animated Blobs */}
       <div className="fixed top-10 left-10 w-96 h-96 bg-[#d0bcff]/15 rounded-full blur-[100px] pointer-events-none animate-pulse" />
       <div className="fixed bottom-10 right-10 w-96 h-96 bg-[#ffb0cd]/15 rounded-full blur-[100px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }} />
@@ -397,6 +399,7 @@ export default function App() {
                   onSeedDemoData={handleSeedDemoData}
                   onClearData={handleClearData}
                   onDeleteAccount={handleDeleteAccount}
+                  onUpdateUserSettings={handleUpdateUserSettings}
                 />
               )}
             </motion.div>
@@ -428,6 +431,7 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </CurrencyProvider>
   );
 }

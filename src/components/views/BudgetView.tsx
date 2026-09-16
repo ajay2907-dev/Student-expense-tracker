@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { User, Budget, Expense, CategoryLimit, RecurringExpense } from '../../types';
 import { formatCurrency } from '../../lib/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface BudgetViewProps {
   user: User;
@@ -41,12 +42,14 @@ interface BudgetViewProps {
   categoryLimits: CategoryLimit[];
   recurringExpenses: RecurringExpense[];
   expenses: Expense[];
-  onSaveBudget: (month: string, amount: number) => Promise<void>;
-  onSaveCategoryLimit: (category: string, limitAmount: number) => Promise<void>;
+  onSaveBudget?: (month: string, amount: number) => Promise<void>;
+  onSetBudget?: (month: string, amount: number) => Promise<void>;
+  onSaveCategoryLimit?: (category: string, limitAmount: number) => Promise<void>;
+  onSetCategoryLimit?: (category: string, limitAmount: number) => Promise<void>;
   onDeleteCategoryLimit: (limitId: string) => Promise<void>;
   onAddRecurringExpense: (recurring: Partial<RecurringExpense>) => Promise<void>;
   onDeleteRecurringExpense: (recurringId: string) => Promise<void>;
-  onUpdateUserSettings: (settings: Partial<User>) => Promise<void>;
+  onUpdateUserSettings?: (settings: Partial<User>) => Promise<void>;
   theme?: 'dark' | 'light';
 }
 
@@ -57,7 +60,9 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   recurringExpenses,
   expenses,
   onSaveBudget,
+  onSetBudget,
   onSaveCategoryLimit,
+  onSetCategoryLimit,
   onDeleteCategoryLimit,
   onAddRecurringExpense,
   onDeleteRecurringExpense,
@@ -65,16 +70,49 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   theme = 'dark',
 }) => {
   const isLight = theme === 'light';
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    format,
+    preferredCurrencySymbol,
+    preferredCurrencyCode,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
   const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
   const todayStr = new Date().toISOString().split('T')[0];
 
+  const saveBudgetFn = onSetBudget || onSaveBudget;
+  const saveCatLimitFn = onSetCategoryLimit || onSaveCategoryLimit;
+
+  // Converted datasets for user's preferred currency
+  const displayBudgets = React.useMemo(
+    () => budgets.map((b) => ({ ...b, amount: convert(b.amount) })),
+    [budgets, convert]
+  );
+  const displayExpenses = React.useMemo(
+    () => expenses.map((e) => ({ ...e, amount: convert(e.amount) })),
+    [expenses, convert]
+  );
+  const displayCategoryLimits = React.useMemo(
+    () => categoryLimits.map((c) => ({ ...c, limit_amount: convert(c.limit_amount) })),
+    [categoryLimits, convert]
+  );
+  const displayRecurringExpenses = React.useMemo(
+    () => recurringExpenses.map((r) => ({ ...r, amount: convert(r.amount) })),
+    [recurringExpenses, convert]
+  );
+
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
 
-  const budgetObj = budgets.find((b) => b.month === selectedMonth);
-  const currentBudgetAmount = budgetObj ? budgetObj.amount : 15000;
+  const budgetObj = displayBudgets.find((b) => b.month === selectedMonth);
+  const currentBudgetAmount = budgetObj ? Math.round(budgetObj.amount) : Math.round(convert(15000));
 
   const [inputBudget, setInputBudget] = useState<string>(currentBudgetAmount.toString());
+
+  React.useEffect(() => {
+    setInputBudget(currentBudgetAmount.toString());
+  }, [selectedMonth, currentBudgetAmount]);
+
   const [loading, setLoading] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -102,22 +140,22 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   };
 
   const totalMonthlyRecurring = Math.round(
-    recurringExpenses.reduce((sum, rec) => sum + getNormalizedMonthlyAmount(rec), 0)
+    displayRecurringExpenses.reduce((sum, rec) => sum + getNormalizedMonthlyAmount(rec), 0)
   );
 
   // Group recurring count by frequency
-  const dailyRecCount = recurringExpenses.filter((r) => r.frequency === 'daily').length;
-  const weeklyRecCount = recurringExpenses.filter((r) => r.frequency === 'weekly').length;
-  const monthlyRecCount = recurringExpenses.filter((r) => r.frequency === 'monthly').length;
+  const dailyRecCount = displayRecurringExpenses.filter((r) => r.frequency === 'daily').length;
+  const weeklyRecCount = displayRecurringExpenses.filter((r) => r.frequency === 'weekly').length;
+  const monthlyRecCount = displayRecurringExpenses.filter((r) => r.frequency === 'monthly').length;
 
   // Discretionary baseline calculation from past months
   const pastMonths = Array.from(
-    new Set(expenses.map((e) => e.date.substring(0, 7)))
+    new Set(displayExpenses.map((e) => e.date.substring(0, 7)))
   ).filter((m) => m <= currentMonthStr).sort().reverse().slice(0, 3);
 
   let pastMonthlyAvgTotal = 0;
   if (pastMonths.length > 0) {
-    const pastSum = expenses
+    const pastSum = displayExpenses
       .filter((e) => pastMonths.includes(e.date.substring(0, 7)))
       .reduce((s, e) => s + e.amount, 0);
     pastMonthlyAvgTotal = pastSum / pastMonths.length;
@@ -145,7 +183,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
     const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     
     // Check if user set a specific budget for that future month
-    const existingBudget = budgets.find((b) => b.month === monthKey);
+    const existingBudget = displayBudgets.find((b) => b.month === monthKey);
     const monthBudget = existingBudget ? existingBudget.amount : currentBudgetAmount;
 
     const recurringVal = totalMonthlyRecurring;
@@ -167,7 +205,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
   // Group recurring items by category
   const recurringByCategory: Record<string, { total: number; items: RecurringExpense[] }> = {};
-  recurringExpenses.forEach((rec) => {
+  displayRecurringExpenses.forEach((rec) => {
     const amt = getNormalizedMonthlyAmount(rec);
     if (!recurringByCategory[rec.category]) {
       recurringByCategory[rec.category] = { total: 0, items: [] };
@@ -196,16 +234,16 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
     const prevMonthDate = new Date();
     prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
     const prevMonthStr = prevMonthDate.toISOString().substring(0, 7);
-    const prevBudgetObj = budgets.find((b) => b.month === prevMonthStr);
+    const prevBudgetObj = displayBudgets.find((b) => b.month === prevMonthStr);
     if (prevBudgetObj) {
-      const prevExpenses = expenses.filter((e) => e.date.startsWith(prevMonthStr));
+      const prevExpenses = displayExpenses.filter((e) => e.date.startsWith(prevMonthStr));
       const prevSpent = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
       rolloverAmount = Math.max(0, prevBudgetObj.amount - prevSpent);
     }
   }
 
   const effectiveBudget = currentBudgetAmount + rolloverAmount;
-  const monthExpenses = expenses.filter((e) => e.date.startsWith(selectedMonth));
+  const monthExpenses = displayExpenses.filter((e) => e.date.startsWith(selectedMonth));
   const totalSpent = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
   const remaining = effectiveBudget - totalSpent;
   const usagePct = effectiveBudget > 0 ? (totalSpent / effectiveBudget) * 100 : 0;
@@ -217,7 +255,10 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
     try {
       setLoading(true);
-      await onSaveBudget(selectedMonth, amt);
+      const baseAmt = convertToBase(amt);
+      if (saveBudgetFn) {
+        await saveBudgetFn(selectedMonth, baseAmt);
+      }
       setSuccessMsg(`Updated ${selectedMonth} budget limit to ${formatCurrency(amt, currency)}!`);
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err: any) {
@@ -234,7 +275,10 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
     setSavingLimit(true);
     try {
-      await onSaveCategoryLimit(limitCat, amt);
+      const baseLimit = convertToBase(amt);
+      if (saveCatLimitFn) {
+        await saveCatLimitFn(limitCat, baseLimit);
+      }
       setLimitAmt('');
     } catch (err: any) {
       alert(err.message || 'Failed to save category limit');
@@ -250,10 +294,11 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
     setAddingRec(true);
     try {
+      const baseAmt = convertToBase(amt);
       await onAddRecurringExpense({
         user_id: user.user_id,
         name: recName.trim(),
-        amount: amt,
+        amount: baseAmt,
         category: recCat,
         frequency: recFreq,
         start_date: recStartDate,
@@ -269,6 +314,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   };
 
   const toggleRollover = async () => {
+    if (!onUpdateUserSettings) return;
     try {
       await onUpdateUserSettings({
         budget_rollover_enabled: !user.budget_rollover_enabled,
@@ -954,15 +1000,15 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
         {/* Existing Category Limits List */}
         <div className="space-y-3 pt-4 border-t border-white/10">
-          {categoryLimits.length === 0 ? (
+          {displayCategoryLimits.length === 0 ? (
             <p className="text-xs text-[#cbc3d7] light:text-slate-500 text-center py-4">No category limits defined yet.</p>
           ) : (
-            categoryLimits.map((cl) => {
+            displayCategoryLimits.map((cl) => {
               const catExpenses = monthExpenses.filter(
                 (e) => e.category.toLowerCase() === cl.category.toLowerCase()
               );
               const catSpent = catExpenses.reduce((sum, e) => sum + e.amount, 0);
-              const catPct = (catSpent / cl.limit_amount) * 100;
+              const catPct = cl.limit_amount > 0 ? (catSpent / cl.limit_amount) * 100 : 0;
 
               let barColor = 'bg-emerald-400';
               if (catPct >= 100) barColor = 'bg-rose-500';
@@ -1118,10 +1164,10 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
 
         {/* Existing Recurring Expenses List */}
         <div className="space-y-3 pt-4 border-t border-white/10">
-          {recurringExpenses.length === 0 ? (
+          {displayRecurringExpenses.length === 0 ? (
             <p className="text-xs text-[#cbc3d7] light:text-slate-500 text-center py-4">No recurring expenses configured.</p>
           ) : (
-            recurringExpenses.map((rec) => (
+            displayRecurringExpenses.map((rec) => (
               <div
                 key={rec.recurring_id}
                 className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 flex items-center justify-between"

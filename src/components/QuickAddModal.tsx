@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { X, PlusCircle, Calendar, Tag, CreditCard, FileText, Sparkles, Loader2, Check } from 'lucide-react';
 import { User, Expense } from '../types';
 import { api, CategorySuggestionResponse } from '../lib/api';
+import { useCurrency } from '../context/CurrencyContext';
 
 interface QuickAddModalProps {
   user: User;
@@ -24,9 +25,14 @@ const CATEGORIES = [
 const PAYMENT_METHODS = ['UPI', 'Cash', 'Debit Card', 'Credit Card', 'Bank Transfer'];
 
 export const QuickAddModal: React.FC<QuickAddModalProps> = ({ user, onClose, onAddExpense }) => {
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    preferredCurrencySymbol,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
 
-  const [amount, setAmount] = useState<string>('120');
+  const [amount, setAmount] = useState<string>(Math.round(convert(120)).toString());
   const [category, setCategory] = useState<string>(user.default_category || 'Food');
   const [date, setDate] = useState<string>(new Date().toISOString().substring(0, 10));
   const [description, setDescription] = useState<string>('');
@@ -86,9 +92,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ user, onClose, onA
 
     try {
       setLoading(true);
+      const baseAmt = convertToBase(numAmt);
       await onAddExpense({
         user_id: user.user_id,
-        amount: numAmt,
+        amount: baseAmt,
         category,
         date,
         description: description.trim() || category,

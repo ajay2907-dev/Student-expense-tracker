@@ -311,12 +311,17 @@ export const api = {
   deleteAccountApi: deleteUserAccountApi,
 };
 
-// Format Currency Utility
-export function formatCurrency(amount: number, symbol: string = '₹'): string {
-  const formatted = Math.abs(amount).toLocaleString('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `${amount < 0 ? '-' : ''}${symbol}${formatted}`;
+import { formatCurrencyAmount } from './exchangeRates';
+
+// Format Currency Utility supporting all global currencies and symbols
+export function formatCurrency(amount: number, symbolOrCode: string = '₹'): string {
+  return formatCurrencyAmount(amount, symbolOrCode);
 }
+
+export async function fetchExchangeRatesApi(base: string = 'INR'): Promise<any> {
+  const res = await fetch(`${API_BASE}/exchange-rates?base=${encodeURIComponent(base)}`);
+  if (!res.ok) throw new Error('Failed to fetch exchange rates');
+  return res.json();
+}
+
 

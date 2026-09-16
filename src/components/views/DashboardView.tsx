@@ -39,6 +39,7 @@ import { User, Expense, Budget, SavingsGoal, ActiveTab } from '../../types';
 import { formatCurrency } from '../../lib/api';
 import { getWeeklyDaysData } from '../../lib/dateUtils';
 import { FinancialHealthInsightCard } from '../FinancialHealthInsightCard';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface DashboardViewProps {
   user: User;
@@ -62,8 +63,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   theme = 'dark',
 }) => {
   const isLight = theme === 'light';
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    preferredCurrencySymbol,
+    preferredCurrencyCode,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
   const todayStr = new Date().toISOString().split('T')[0];
+
+  // Convert raw base-currency data to user's preferred currency via exchange rate service
+  const displayExpenses = React.useMemo(
+    () => expenses.map((e) => ({ ...e, amount: convert(e.amount) })),
+    [expenses, convert]
+  );
+  const displayBudgets = React.useMemo(
+    () => budgets.map((b) => ({ ...b, amount: convert(b.amount) })),
+    [budgets, convert]
+  );
 
   // Quick Add Form State
   const [quickAmount, setQuickAmount] = useState<string>('');
@@ -82,7 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       if (onAddExpense) {
         await onAddExpense({
           user_id: user.user_id,
-          amount: Number(quickAmount),
+          amount: convertToBase(Number(quickAmount)),
           category: quickCategory,
           description: quickDesc.trim() || quickCategory,
           date: quickDate,
@@ -101,8 +118,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // 1. Monthly Metrics & Budget Rollover calculation
   const currentMonthStr = todayStr.substring(0, 7);
-  const currentBudgetObj = budgets.find((b) => b.month === currentMonthStr);
-  let baseBudget = currentBudgetObj ? currentBudgetObj.amount : 15000;
+  const currentBudgetObj = displayBudgets.find((b) => b.month === currentMonthStr);
+  let baseBudget = currentBudgetObj ? currentBudgetObj.amount : convert(15000);
 
   // Calculate rollover if enabled
   let rolloverAmount = 0;
@@ -110,26 +127,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const prevMonthDate = new Date();
     prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
     const prevMonthStr = prevMonthDate.toISOString().substring(0, 7);
-    const prevBudgetObj = budgets.find((b) => b.month === prevMonthStr);
+    const prevBudgetObj = displayBudgets.find((b) => b.month === prevMonthStr);
     if (prevBudgetObj) {
-      const prevExpenses = expenses.filter((e) => e.date.startsWith(prevMonthStr));
+      const prevExpenses = displayExpenses.filter((e) => e.date.startsWith(prevMonthStr));
       const prevSpent = prevExpenses.reduce((sum, e) => sum + e.amount, 0);
       rolloverAmount = Math.max(0, prevBudgetObj.amount - prevSpent);
     }
   }
 
   const effectiveBudget = baseBudget + rolloverAmount;
-  const currentMonthExpenses = expenses.filter((e) => e.date.startsWith(currentMonthStr));
+  const currentMonthExpenses = displayExpenses.filter((e) => e.date.startsWith(currentMonthStr));
   const currentMonthSpent = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
   const remainingBudget = effectiveBudget - currentMonthSpent;
 
   // 2. Today's Summary
-  const todayExpenses = expenses.filter((e) => e.date === todayStr);
+  const todayExpenses = displayExpenses.filter((e) => e.date === todayStr);
   const todaySpent = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
   const todayCount = todayExpenses.length;
 
   // 3. Weekly Summary & Interactive Touch Selection
-  const { weekData, totalWeekly, dailyAvg } = getWeeklyDaysData(expenses, currency);
+  const { weekData, totalWeekly, dailyAvg } = getWeeklyDaysData(displayExpenses, currency);
 
   const [selectedWeeklyDayIndex, setSelectedWeeklyDayIndex] = useState<number>(() => {
     const todayIdx = weekData.findIndex((d) => d.isToday);
@@ -140,7 +157,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // 4. Category breakdown
   const categoryTotals: Record<string, number> = {};
-  expenses.forEach((e) => {
+  displayExpenses.forEach((e) => {
     categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
   });
 
@@ -168,20 +185,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // 5. Largest Expense
   let largestExpenseItem: Expense | null = null;
-  if (expenses.length > 0) {
-    largestExpenseItem = [...expenses].sort((a, b) => b.amount - a.amount)[0];
+  if (displayExpenses.length > 0) {
+    largestExpenseItem = [...displayExpenses].sort((a, b) => b.amount - a.amount)[0];
   }
 
   // 6. Overall Stats
-  const totalMoneySpentAllTime = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalExpensesCount = expenses.length;
+  const totalMoneySpentAllTime = displayExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpensesCount = displayExpenses.length;
   const averageExpenseAmount = totalExpensesCount > 0 ? Math.round(totalMoneySpentAllTime / totalExpensesCount) : 0;
 
   // Previous Month Spent
   const prevMonthDate = new Date();
   prevMonthDate.setMonth(prevMonthDate.getMonth() - 1);
   const prevMonthStr = prevMonthDate.toISOString().substring(0, 7);
-  const prevMonthExpenses = expenses.filter((e) => e.date.startsWith(prevMonthStr));
+  const prevMonthExpenses = displayExpenses.filter((e) => e.date.startsWith(prevMonthStr));
   const prevMonthSpent = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Current Month Category Breakdown & Pacing for Financial Health Insight
@@ -987,7 +1004,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </button>
         </div>
 
-        {expenses.length === 0 ? (
+        {displayExpenses.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <Coffee className="w-12 h-12 text-[#cbc3d7]/40 mx-auto" />
             <p className="text-sm font-semibold text-white light:text-slate-800">📊 No expense data yet.</p>
@@ -1012,7 +1029,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 light:divide-slate-100">
-                {expenses.slice(0, 6).map((exp) => (
+                {displayExpenses.slice(0, 6).map((exp) => (
                   <tr key={exp.expense_id} className="hover:bg-white/5 transition-colors">
                     <td className="py-3 px-2 font-semibold text-white light:text-slate-800 flex items-center gap-2">
                       <span className="p-1.5 rounded-lg bg-white/10">{getCategoryIcon(exp.category)}</span>

@@ -378,6 +378,69 @@ function ensureDemoUserExists(): User {
 
 // API Routes
 
+// Exchange Rate Service Cache & Fallbacks
+let cachedRates: { rates: Record<string, number>; timestamp: number } | null = null;
+const FALLBACK_INR_RATES: Record<string, number> = {
+  INR: 1.0,
+  USD: 0.01042,
+  EUR: 0.00904,
+  GBP: 0.00774,
+  CAD: 0.01451,
+  AUD: 0.01462,
+  JPY: 1.6171,
+  SGD: 0.01327,
+  CHF: 0.00854,
+  AED: 0.03826,
+  CNY: 0.07021,
+  NZD: 0.01809,
+};
+
+app.get("/api/exchange-rates", async (_req, res) => {
+  const ONE_HOUR = 60 * 60 * 1000;
+  const now = Date.now();
+
+  if (cachedRates && now - cachedRates.timestamp < ONE_HOUR) {
+    return res.json({
+      base: "INR",
+      rates: cachedRates.rates,
+      source: "cached",
+      timestamp: cachedRates.timestamp,
+    });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    const apiRes = await fetch("https://open.er-api.com/v6/latest/INR", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+
+    if (apiRes.ok) {
+      const data = (await apiRes.json()) as any;
+      if (data && data.rates) {
+        const rates: Record<string, number> = { ...FALLBACK_INR_RATES, ...data.rates };
+        cachedRates = { rates, timestamp: now };
+        return res.json({
+          base: "INR",
+          rates,
+          source: "live",
+          timestamp: now,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Exchange rate external fetch failed, returning fallback rates:", err);
+  }
+
+  return res.json({
+    base: "INR",
+    rates: FALLBACK_INR_RATES,
+    source: "fallback",
+    timestamp: now,
+  });
+});
+
 // Register
 app.post("/api/auth/register", async (req, res) => {
   const { name, email, password } = req.body;

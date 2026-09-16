@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, ArrowRightLeft, AlertCircle } from 'lucide-react';
 import { User, Expense } from '../../types';
 import { formatCurrency } from '../../lib/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface ComparisonViewProps {
   user: User;
@@ -9,7 +10,16 @@ interface ComparisonViewProps {
 }
 
 export const ComparisonView: React.FC<ComparisonViewProps> = ({ user, expenses }) => {
-  const currency = user.currency || '₹';
+  const { convert, format, preferredCurrencySymbol } = useCurrency();
+  const currency = preferredCurrencySymbol;
+
+  // Converted expenses for user's preferred currency
+  const displayExpenses = useMemo(() => {
+    return expenses.map((e) => ({
+      ...e,
+      amount: convert(e.amount),
+    }));
+  }, [expenses, convert]);
 
   const now = new Date();
   const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -20,8 +30,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({ user, expenses }
   const [monthA, setMonthA] = useState<string>(currentMonthStr);
   const [monthB, setMonthB] = useState<string>(prevMonthStr);
 
-  const expensesA = expenses.filter((e) => e.date.startsWith(monthA));
-  const expensesB = expenses.filter((e) => e.date.startsWith(monthB));
+  const expensesA = displayExpenses.filter((e) => e.date.startsWith(monthA));
+  const expensesB = displayExpenses.filter((e) => e.date.startsWith(monthB));
 
   const totalA = expensesA.reduce((sum, e) => sum + e.amount, 0);
   const totalB = expensesB.reduce((sum, e) => sum + e.amount, 0);

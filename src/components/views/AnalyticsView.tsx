@@ -17,6 +17,7 @@ import { Sparkles, TrendingUp, DollarSign, Lightbulb, Calendar, CreditCard } fro
 import { User, Expense, DateRangePreset } from '../../types';
 import { formatCurrency } from '../../lib/api';
 import { filterExpensesByPreset } from '../../lib/dateUtils';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface AnalyticsViewProps {
   user: User;
@@ -26,7 +27,16 @@ interface AnalyticsViewProps {
 
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses, theme = 'dark' }) => {
   const isLight = theme === 'light';
-  const currency = user.currency || '₹';
+  const { convert, format, preferredCurrencySymbol } = useCurrency();
+  const currency = preferredCurrencySymbol;
+
+  // Converted dataset for preferred currency
+  const displayExpenses = React.useMemo(() => {
+    return expenses.map((e) => ({
+      ...e,
+      amount: convert(e.amount),
+    }));
+  }, [expenses, convert]);
 
   const tooltipStyle = {
     backgroundColor: isLight ? '#ffffff' : '#171f33',
@@ -43,7 +53,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses, th
   const [customStart, setCustomStart] = useState<string>('');
   const [customEnd, setCustomEnd] = useState<string>('');
 
-  const filteredExpenses = filterExpensesByPreset(expenses, preset, customStart, customEnd);
+  const filteredExpenses = filterExpensesByPreset(displayExpenses, preset, customStart, customEnd);
 
   // Category Pie Data
   const categoryTotals: Record<string, number> = {};

@@ -5,35 +5,62 @@ import { Target, Plus, CheckCircle2, Trash2, PiggyBank, Sparkles, PartyPopper } 
 import { User, SavingsGoal } from '../../types';
 import { formatCurrency } from '../../lib/api';
 import { ConfirmModal } from '../ConfirmModal';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface SavingsGoalsViewProps {
   user: User;
   savingsGoals: SavingsGoal[];
-  onAddSavingsGoal: (goal: Partial<SavingsGoal>) => Promise<void>;
-  onUpdateSavingsGoal: (goalId: string, updated: Partial<SavingsGoal>) => Promise<void>;
-  onDeleteSavingsGoal: (goalId: string) => Promise<void>;
+  onAddSavingsGoal?: (goal: Partial<SavingsGoal>) => Promise<void>;
+  onAddGoal?: (goal: Partial<SavingsGoal>) => Promise<void>;
+  onUpdateSavingsGoal?: (goalId: string, updated: Partial<SavingsGoal>) => Promise<void>;
+  onUpdateProgress?: (goalId: string, savedAmount: number) => Promise<void>;
+  onDeleteSavingsGoal?: (goalId: string) => Promise<void>;
+  onDeleteGoal?: (goalId: string) => Promise<void>;
 }
 
 export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   user,
   savingsGoals,
   onAddSavingsGoal,
+  onAddGoal,
   onUpdateSavingsGoal,
+  onUpdateProgress,
   onDeleteSavingsGoal,
+  onDeleteGoal,
 }) => {
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    format,
+    preferredCurrencySymbol,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
+
+  const addGoalFn = onAddGoal || onAddSavingsGoal;
+  const deleteGoalFn = onDeleteGoal || onDeleteSavingsGoal;
+
+  // Converted dataset for preferred currency
+  const displaySavingsGoals = React.useMemo(
+    () =>
+      savingsGoals.map((g) => ({
+        ...g,
+        target_amount: convert(g.target_amount),
+        saved_amount: convert(g.saved_amount),
+      })),
+    [savingsGoals, convert]
+  );
 
   // New goal form states
   const [goalName, setGoalName] = useState<string>('');
-  const [targetAmount, setTargetAmount] = useState<string>('10000');
-  const [savedAmount, setSavedAmount] = useState<string>('1000');
+  const [targetAmount, setTargetAmount] = useState<string>(Math.round(convert(10000)).toString());
+  const [savedAmount, setSavedAmount] = useState<string>(Math.round(convert(1000)).toString());
   const [targetDate, setTargetDate] = useState<string>('2026-12-31');
   const [showCreateForm, setShowCreateForm] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
 
   // Deposit modal state
   const [depositingGoal, setDepositingGoal] = useState<SavingsGoal | null>(null);
-  const [depositAdd, setDepositAdd] = useState<string>('500');
+  const [depositAdd, setDepositAdd] = useState<string>(Math.round(convert(500)).toString());
 
   // Delete modal state
   const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
@@ -105,21 +132,26 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
 
     try {
       setLoading(true);
-      await onAddSavingsGoal({
-        user_id: user.user_id,
-        goal_name: goalName.trim(),
-        target_amount: tAmt,
-        saved_amount: isNaN(sAmt) ? 0 : sAmt,
-        target_date: targetDate,
-      });
+      const baseTarget = convertToBase(tAmt);
+      const baseSaved = isNaN(sAmt) ? 0 : convertToBase(sAmt);
+
+      if (addGoalFn) {
+        await addGoalFn({
+          user_id: user.user_id,
+          goal_name: goalName.trim(),
+          target_amount: baseTarget,
+          saved_amount: baseSaved,
+          target_date: targetDate,
+        });
+      }
 
       if (sAmt >= tAmt) {
         triggerConfettiCelebration(goalName.trim());
       }
 
       setGoalName('');
-      setTargetAmount('10000');
-      setSavedAmount('1000');
+      setTargetAmount(Math.round(convert(10000)).toString());
+      setSavedAmount(Math.round(convert(1000)).toString());
       setShowCreateForm(false);
     } catch (err: any) {
       alert(err.message || 'Failed to create savings goal');
@@ -137,16 +169,24 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
 
     try {
       setLoading(true);
-      const newTotalSaved = depositingGoal.saved_amount + addVal;
-      const reachesTarget = newTotalSaved >= depositingGoal.target_amount;
+      const baseAddVal = convertToBase(addVal);
+      const originalGoal = savingsGoals.find((g) => g.goal_id === depositingGoal.goal_id);
+      const baseSavedSoFar = originalGoal ? originalGoal.saved_amount : convertToBase(depositingGoal.saved_amount);
+      const newBaseTotalSaved = baseSavedSoFar + baseAddVal;
 
-      await onUpdateSavingsGoal(depositingGoal.goal_id, {
-        saved_amount: newTotalSaved,
-      });
+      const reachesTarget = (depositingGoal.saved_amount + addVal) >= depositingGoal.target_amount;
+
+      if (onUpdateProgress) {
+        await onUpdateProgress(depositingGoal.goal_id, newBaseTotalSaved);
+      } else if (onUpdateSavingsGoal) {
+        await onUpdateSavingsGoal(depositingGoal.goal_id, {
+          saved_amount: newBaseTotalSaved,
+        });
+      }
 
       const currentGoalName = depositingGoal.goal_name;
       setDepositingGoal(null);
-      setDepositAdd('500');
+      setDepositAdd(Math.round(convert(500)).toString());
 
       if (reachesTarget) {
         triggerConfettiCelebration(currentGoalName);
@@ -161,7 +201,9 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
   const handleConfirmDelete = async () => {
     if (!deletingGoalId) return;
     try {
-      await onDeleteSavingsGoal(deletingGoalId);
+      if (deleteGoalFn) {
+        await deleteGoalFn(deletingGoalId);
+      }
       setDeletingGoalId(null);
     } catch (err: any) {
       alert(err.message || 'Failed to delete goal');
@@ -286,14 +328,14 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
 
       {/* Goal Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {savingsGoals.length === 0 ? (
+        {displaySavingsGoals.length === 0 ? (
           <div className="col-span-full glass-panel rounded-3xl p-12 text-center text-[#cbc3d7] space-y-3">
             <PiggyBank className="w-12 h-12 text-[#cbc3d7]/40 mx-auto" />
             <p className="text-base font-medium">No savings goals created yet.</p>
             <p className="text-xs">Create your first goal above to start tracking progress!</p>
           </div>
         ) : (
-          savingsGoals.map((goal) => {
+          displaySavingsGoals.map((goal) => {
             const pct = goal.target_amount > 0 ? Math.round((goal.saved_amount / goal.target_amount) * 100) : 0;
             const isCompleted = pct >= 100;
             const remainingNeeded = Math.max(0, goal.target_amount - goal.saved_amount);

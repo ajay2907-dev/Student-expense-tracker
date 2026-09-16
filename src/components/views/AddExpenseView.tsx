@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { User, Expense } from '../../types';
 import { api, CategorySuggestionResponse } from '../../lib/api';
+import { useCurrency } from '../../context/CurrencyContext';
 
 interface AddExpenseViewProps {
   user: User;
@@ -42,9 +43,15 @@ const QUICK_MERCHANT_EXAMPLES = [
 ];
 
 export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpense }) => {
-  const currency = user.currency || '₹';
+  const {
+    convert,
+    convertToBase,
+    format,
+    preferredCurrencySymbol,
+  } = useCurrency();
+  const currency = preferredCurrencySymbol;
 
-  const [amount, setAmount] = useState<string>('150');
+  const [amount, setAmount] = useState<string>(Math.round(convert(150)).toString());
   const [category, setCategory] = useState<string>(user.default_category || 'Food');
   const [date, setDate] = useState<string>(new Date().toISOString().substring(0, 10));
   const [description, setDescription] = useState<string>('');
@@ -130,18 +137,19 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
 
     try {
       setLoading(true);
+      const baseAmt = convertToBase(numAmt);
       await onAddExpense({
         user_id: user.user_id,
-        amount: numAmt,
+        amount: baseAmt,
         category,
         date,
         description: description.trim() || category,
         payment_method: paymentMethod,
       });
 
-      setSuccessMsg(`Successfully recorded ${currency}${numAmt.toLocaleString('en-IN')} under ${category}!`);
+      setSuccessMsg(`Successfully recorded ${format(numAmt)} under ${category}!`);
       setDescription('');
-      setAmount('150');
+      setAmount(Math.round(convert(150)).toString());
       setAiSuggestion(null);
       setUserManuallySelectedCategory(false);
     } catch (err: any) {
