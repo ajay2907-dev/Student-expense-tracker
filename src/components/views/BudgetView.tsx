@@ -1,4 +1,15 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ReferenceLine,
+} from 'recharts';
 import {
   Wallet,
   AlertTriangle,
@@ -11,7 +22,15 @@ import {
   Layers,
   ArrowRight,
   ShieldAlert,
-  Calendar
+  Calendar,
+  TrendingUp,
+  Sparkles,
+  Zap,
+  ArrowUpRight,
+  Info,
+  CalendarClock,
+  PieChart as PieIcon,
+  Check
 } from 'lucide-react';
 import { User, Budget, Expense, CategoryLimit, RecurringExpense } from '../../types';
 import { formatCurrency } from '../../lib/api';
@@ -28,6 +47,7 @@ interface BudgetViewProps {
   onAddRecurringExpense: (recurring: Partial<RecurringExpense>) => Promise<void>;
   onDeleteRecurringExpense: (recurringId: string) => Promise<void>;
   onUpdateUserSettings: (settings: Partial<User>) => Promise<void>;
+  theme?: 'dark' | 'light';
 }
 
 export const BudgetView: React.FC<BudgetViewProps> = ({
@@ -42,7 +62,9 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   onAddRecurringExpense,
   onDeleteRecurringExpense,
   onUpdateUserSettings,
+  theme = 'dark',
 }) => {
+  const isLight = theme === 'light';
   const currency = user.currency || '₹';
   const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
   const todayStr = new Date().toISOString().split('T')[0];
@@ -55,6 +77,104 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   const [inputBudget, setInputBudget] = useState<string>(currentBudgetAmount.toString());
   const [loading, setLoading] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Predictive Forecasting State
+  const [forecastingEnabled, setForecastingEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('student_predictive_forecasting');
+    return saved !== null ? saved === 'true' : true;
+  });
+  const [forecastHorizon, setForecastHorizon] = useState<3 | 6 | 12>(6);
+  const [spendScenario, setSpendScenario] = useState<'lean' | 'baseline' | 'conservative'>('baseline');
+
+  const toggleForecasting = () => {
+    setForecastingEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem('student_predictive_forecasting', String(next));
+      return next;
+    });
+  };
+
+  // Convert each recurring frequency to a normalized monthly burden
+  const getNormalizedMonthlyAmount = (rec: RecurringExpense): number => {
+    if (rec.frequency === 'daily') return rec.amount * 30.42;
+    if (rec.frequency === 'weekly') return rec.amount * 4.333;
+    return rec.amount;
+  };
+
+  const totalMonthlyRecurring = Math.round(
+    recurringExpenses.reduce((sum, rec) => sum + getNormalizedMonthlyAmount(rec), 0)
+  );
+
+  // Group recurring count by frequency
+  const dailyRecCount = recurringExpenses.filter((r) => r.frequency === 'daily').length;
+  const weeklyRecCount = recurringExpenses.filter((r) => r.frequency === 'weekly').length;
+  const monthlyRecCount = recurringExpenses.filter((r) => r.frequency === 'monthly').length;
+
+  // Discretionary baseline calculation from past months
+  const pastMonths = Array.from(
+    new Set(expenses.map((e) => e.date.substring(0, 7)))
+  ).filter((m) => m <= currentMonthStr).sort().reverse().slice(0, 3);
+
+  let pastMonthlyAvgTotal = 0;
+  if (pastMonths.length > 0) {
+    const pastSum = expenses
+      .filter((e) => pastMonths.includes(e.date.substring(0, 7)))
+      .reduce((s, e) => s + e.amount, 0);
+    pastMonthlyAvgTotal = pastSum / pastMonths.length;
+  } else {
+    pastMonthlyAvgTotal = currentBudgetAmount * 0.75;
+  }
+
+  // Baseline discretionary = total average minus fixed recurring
+  const rawDiscretionary = Math.max(0, pastMonthlyAvgTotal - totalMonthlyRecurring);
+  const baselineDiscretionary = rawDiscretionary > 0 ? rawDiscretionary : Math.round(currentBudgetAmount * 0.45);
+
+  const scenarioMultiplier = spendScenario === 'lean' ? 0.85 : spendScenario === 'conservative' ? 1.15 : 1.0;
+  const projectedDiscretionary = Math.round(baselineDiscretionary * scenarioMultiplier);
+  const projectedMonthlyTotal = totalMonthlyRecurring + projectedDiscretionary;
+  const projectedMonthlySurplus = currentBudgetAmount - projectedMonthlyTotal;
+  const recurringBurdenPct = currentBudgetAmount > 0 ? (totalMonthlyRecurring / currentBudgetAmount) * 100 : 0;
+  const totalProjectedPct = currentBudgetAmount > 0 ? (projectedMonthlyTotal / currentBudgetAmount) * 100 : 0;
+
+  // Multi-Month Forecast Data for Recharts
+  const currentDate = new Date();
+  const futureMonthsData = [];
+  for (let i = 1; i <= forecastHorizon; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+    const monthKey = d.toISOString().substring(0, 7);
+    const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    
+    // Check if user set a specific budget for that future month
+    const existingBudget = budgets.find((b) => b.month === monthKey);
+    const monthBudget = existingBudget ? existingBudget.amount : currentBudgetAmount;
+
+    const recurringVal = totalMonthlyRecurring;
+    const discretionaryVal = projectedDiscretionary;
+    const totalVal = recurringVal + discretionaryVal;
+    const surplusVal = monthBudget - totalVal;
+
+    futureMonthsData.push({
+      monthKey,
+      monthLabel,
+      recurring: recurringVal,
+      discretionary: discretionaryVal,
+      total: totalVal,
+      budget: monthBudget,
+      surplus: surplusVal,
+      isDeficit: surplusVal < 0,
+    });
+  }
+
+  // Group recurring items by category
+  const recurringByCategory: Record<string, { total: number; items: RecurringExpense[] }> = {};
+  recurringExpenses.forEach((rec) => {
+    const amt = getNormalizedMonthlyAmount(rec);
+    if (!recurringByCategory[rec.category]) {
+      recurringByCategory[rec.category] = { total: 0, items: [] };
+    }
+    recurringByCategory[rec.category].total += amt;
+    recurringByCategory[rec.category].items.push(rec);
+  });
 
   // Category Limit Form State
   const [limitCat, setLimitCat] = useState<string>('Food');
@@ -337,6 +457,446 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Predictive Spending Forecast Section */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-8 border border-white/10 space-y-6">
+        {/* Header & Toggle */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#d0bcff] to-[#adc6ff] flex items-center justify-center text-[#3c0091] font-bold shrink-0 shadow-sm">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-lg text-white light:text-slate-900">Predictive Spending Forecast</h3>
+                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-[#d0bcff]/20 text-[#d0bcff] light:bg-purple-100 light:text-purple-800 border border-[#d0bcff]/30 light:border-purple-200 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Recurring Obligations Extrapolator
+                </span>
+              </div>
+              <p className="text-xs text-[#cbc3d7] light:text-slate-500">
+                Projects future monthly outflows by compounding recurring expenses and discretionary baseline habits.
+              </p>
+            </div>
+          </div>
+
+          {/* Toggle Switch */}
+          <div className="flex items-center gap-3 self-end sm:self-center">
+            <span className="text-xs font-semibold text-[#cbc3d7] light:text-slate-600">
+              Forecasting <strong className={forecastingEnabled ? 'text-emerald-400 light:text-emerald-700' : 'text-slate-400'}>{forecastingEnabled ? 'ON' : 'OFF'}</strong>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={forecastingEnabled}
+              onClick={toggleForecasting}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors cursor-pointer focus:outline-none ${
+                forecastingEnabled ? 'bg-[#d0bcff] light:bg-[#7c3aed]' : 'bg-white/15 light:bg-slate-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white light:bg-white transition-transform duration-200 shadow-md ${
+                  forecastingEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Content Animated Display */}
+        <AnimatePresence mode="wait">
+          {!forecastingEnabled ? (
+            <motion.div
+              key="forecast-disabled"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="p-6 rounded-2xl bg-white/5 light:bg-slate-50 border border-white/5 light:border-slate-200 text-center space-y-3"
+            >
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-white/10 light:bg-slate-200 flex items-center justify-center text-[#cbc3d7] light:text-slate-600">
+                <CalendarClock className="w-6 h-6" />
+              </div>
+              <h4 className="text-base font-bold text-white light:text-slate-900">
+                Predictive Forecasting is Currently Disabled
+              </h4>
+              <p className="text-xs text-[#cbc3d7] light:text-slate-600 max-w-lg mx-auto leading-relaxed">
+                Enable predictive forecasting to extrapolate your {recurringExpenses.length} recurring expenses (daily, weekly, and monthly) across upcoming months, simulate discretionary scenarios, and inspect whether your base monthly budget can safely sustain future commitments.
+              </p>
+              <button
+                type="button"
+                onClick={toggleForecasting}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-xs shadow-md hover:shadow-lg transition-all cursor-pointer inline-flex items-center gap-2 active:scale-95"
+              >
+                <TrendingUp className="w-4 h-4" />
+                <span>Turn On Predictive Forecasting</span>
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="forecast-enabled"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-6"
+            >
+              {/* Summary Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-500 block">
+                    Committed Recurring
+                  </span>
+                  <div className="text-xl font-extrabold text-[#d0bcff] light:text-purple-700">
+                    {formatCurrency(totalMonthlyRecurring, currency)}
+                    <span className="text-xs font-normal text-[#cbc3d7] light:text-slate-500"> / mo</span>
+                  </div>
+                  <p className="text-[11px] text-[#cbc3d7] light:text-slate-600">
+                    {recurringExpenses.length} item{recurringExpenses.length === 1 ? '' : 's'} ({dailyRecCount}d, {weeklyRecCount}w, {monthlyRecCount}m)
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-500 block">
+                    Est. Discretionary
+                  </span>
+                  <div className="text-xl font-extrabold text-[#adc6ff] light:text-blue-700">
+                    {formatCurrency(projectedDiscretionary, currency)}
+                    <span className="text-xs font-normal text-[#cbc3d7] light:text-slate-500"> / mo</span>
+                  </div>
+                  <p className="text-[11px] text-[#cbc3d7] light:text-slate-600 capitalize">
+                    {spendScenario} spending model
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-500 block">
+                    Projected Total Outflow
+                  </span>
+                  <div className="text-xl font-extrabold text-white light:text-slate-900">
+                    {formatCurrency(projectedMonthlyTotal, currency)}
+                    <span className="text-xs font-normal text-[#cbc3d7] light:text-slate-500"> / mo</span>
+                  </div>
+                  <p className="text-[11px] text-[#cbc3d7] light:text-slate-600">
+                    {totalProjectedPct.toFixed(1)}% of base budget ({formatCurrency(currentBudgetAmount, currency)})
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-500 block">
+                    Projected Net Margin
+                  </span>
+                  <div className={`text-xl font-extrabold ${projectedMonthlySurplus >= 0 ? 'text-emerald-400 light:text-emerald-600' : 'text-rose-400 light:text-rose-600'}`}>
+                    {projectedMonthlySurplus >= 0 ? '+' : ''}{formatCurrency(projectedMonthlySurplus, currency)}
+                    <span className="text-xs font-normal text-[#cbc3d7] light:text-slate-500"> / mo</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className={`inline-block w-2 h-2 rounded-full ${projectedMonthlySurplus >= 0 ? 'bg-emerald-400' : 'bg-rose-500'}`} />
+                    <span className="text-[10px] font-extrabold uppercase tracking-wide text-[#cbc3d7] light:text-slate-600">
+                      {projectedMonthlySurplus >= 0 ? 'Budget Surplus' : 'Projected Deficit'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scenario & Horizon Controls Bar */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200">
+                {/* Horizon Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[#cbc3d7] light:text-slate-600 flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5" /> Horizon:
+                  </span>
+                  <div className="flex items-center gap-1 bg-black/20 light:bg-slate-200 p-1 rounded-xl">
+                    {([3, 6, 12] as const).map((h) => (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => setForecastHorizon(h)}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          forecastHorizon === h
+                            ? 'bg-[#d0bcff] text-[#3c0091] shadow-sm'
+                            : 'text-[#cbc3d7] light:text-slate-700 hover:text-white'
+                        }`}
+                      >
+                        {h} Months
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Scenario Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-[#cbc3d7] light:text-slate-600 flex items-center gap-1">
+                    <Sliders className="w-3.5 h-3.5" /> Habit Scenario:
+                  </span>
+                  <div className="flex items-center gap-1 bg-black/20 light:bg-slate-200 p-1 rounded-xl">
+                    {(
+                      [
+                        { id: 'lean', label: 'Lean (-15%)' },
+                        { id: 'baseline', label: 'Baseline' },
+                        { id: 'conservative', label: 'Safety (+15%)' },
+                      ] as const
+                    ).map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSpendScenario(s.id)}
+                        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                          spendScenario === s.id
+                            ? 'bg-[#d0bcff] text-[#3c0091] shadow-sm'
+                            : 'text-[#cbc3d7] light:text-slate-700 hover:text-white'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Multi-Month Projected Spend Bar Chart */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-600 flex items-center gap-1.5">
+                    <span>Projected Monthly Spend Timeline vs Budget</span>
+                  </h4>
+                  <span className="text-[11px] text-[#cbc3d7] light:text-slate-500">
+                    Dashed line = Monthly Budget Limit ({formatCurrency(currentBudgetAmount, currency)})
+                  </span>
+                </div>
+
+                <div className="w-full h-64 bg-black/10 light:bg-slate-50 rounded-2xl p-3 border border-white/5 light:border-slate-200">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={futureMonthsData}
+                      margin={{ top: 20, right: 15, left: -10, bottom: 5 }}
+                    >
+                      <XAxis
+                        dataKey="monthLabel"
+                        stroke={isLight ? '#64748b' : '#cbc3d7'}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke={isLight ? '#64748b' : '#cbc3d7'}
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : v)}
+                      />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload || !payload.length) return null;
+                          const data = payload[0]?.payload;
+                          if (!data) return null;
+                          return (
+                            <div className="p-3 rounded-xl bg-slate-900/95 light:bg-white text-white light:text-slate-900 border border-white/20 light:border-slate-200 shadow-xl text-xs space-y-1.5 min-w-44">
+                              <p className="font-bold text-sm border-b border-white/10 light:border-slate-200 pb-1">
+                                {label} Forecast
+                              </p>
+                              <div className="flex justify-between items-center text-[#d0bcff] light:text-purple-700">
+                                <span>Fixed Recurring:</span>
+                                <span className="font-bold">{formatCurrency(data.recurring, currency)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[#adc6ff] light:text-blue-700">
+                                <span>Est. Discretionary:</span>
+                                <span className="font-bold">{formatCurrency(data.discretionary, currency)}</span>
+                              </div>
+                              <div className="flex justify-between items-center font-extrabold border-t border-white/10 light:border-slate-200 pt-1">
+                                <span>Total Projected:</span>
+                                <span>{formatCurrency(data.total, currency)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[11px] text-[#cbc3d7] light:text-slate-500">
+                                <span>Budget Limit:</span>
+                                <span>{formatCurrency(data.budget, currency)}</span>
+                              </div>
+                              <div
+                                className={`text-[11px] font-bold pt-0.5 ${
+                                  data.surplus >= 0 ? 'text-emerald-400 light:text-emerald-600' : 'text-rose-400 light:text-rose-600'
+                                }`}
+                              >
+                                {data.surplus >= 0
+                                  ? `+${formatCurrency(data.surplus, currency)} Buffer`
+                                  : `${formatCurrency(Math.abs(data.surplus), currency)} Over Budget`}
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ paddingTop: 8, fontSize: '11px' }}
+                      />
+                      <ReferenceLine
+                        y={currentBudgetAmount}
+                        stroke="#ffb0cd"
+                        strokeDasharray="4 4"
+                        strokeWidth={2}
+                        label={{
+                          value: `Limit (${currency}${currentBudgetAmount})`,
+                          position: 'top',
+                          fill: isLight ? '#be185d' : '#ffb0cd',
+                          fontSize: 10,
+                          fontWeight: 'bold',
+                        }}
+                      />
+                      <Bar
+                        dataKey="recurring"
+                        name="Committed Recurring"
+                        stackId="spend"
+                        fill={isLight ? '#7c3aed' : '#d0bcff'}
+                        radius={[0, 0, 4, 4]}
+                      />
+                      <Bar
+                        dataKey="discretionary"
+                        name="Est. Discretionary"
+                        stackId="spend"
+                        fill={isLight ? '#3b82f6' : '#adc6ff'}
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Two Column Section: Recurring Burden by Category + Predictive Insights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {/* Left Column: Recurring Breakdown */}
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h5 className="font-bold text-sm text-white light:text-slate-900 flex items-center gap-2">
+                      <PieIcon className="w-4 h-4 text-[#d0bcff] light:text-purple-700" />
+                      Recurring Burden by Category
+                    </h5>
+                    <span className="text-[11px] font-extrabold text-[#d0bcff] light:text-purple-700">
+                      {recurringBurdenPct.toFixed(0)}% of Budget
+                    </span>
+                  </div>
+
+                  {recurringExpenses.length === 0 ? (
+                    <div className="text-center py-5 space-y-2">
+                      <p className="text-xs text-[#cbc3d7] light:text-slate-500">
+                        No recurring expenses added yet.
+                      </p>
+                      <p className="text-[11px] text-[#cbc3d7] light:text-slate-500">
+                        Add subscriptions, tuition fees, or meal plans below to populate predictive commitments.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {Object.entries(recurringByCategory).map(([cat, info]) => {
+                        const catShareOfBudget = currentBudgetAmount > 0 ? (info.total / currentBudgetAmount) * 100 : 0;
+                        return (
+                          <div key={cat} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-semibold text-white light:text-slate-900">{cat}</span>
+                              <span className="text-[#cbc3d7] light:text-slate-600 font-bold">
+                                {formatCurrency(Math.round(info.total), currency)} / mo ({catShareOfBudget.toFixed(0)}%)
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-white/10 light:bg-slate-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-gradient-to-r from-[#d0bcff] to-[#adc6ff]"
+                                style={{ width: `${Math.min(100, catShareOfBudget)}%` }}
+                              />
+                            </div>
+                            <div className="text-[10px] text-[#cbc3d7] light:text-slate-500 flex items-center gap-1.5 flex-wrap">
+                              {info.items.map((item) => (
+                                <span
+                                  key={item.recurring_id}
+                                  className="px-1.5 py-0.5 rounded bg-white/5 light:bg-slate-200 text-white/80 light:text-slate-700"
+                                >
+                                  {item.name} ({formatCurrency(item.amount, currency)}/{item.frequency === 'daily' ? 'd' : item.frequency === 'weekly' ? 'w' : 'm'})
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Predictive Advisory & Insights */}
+                <div className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 space-y-3 flex flex-col justify-between">
+                  <div>
+                    <h5 className="font-bold text-sm text-white light:text-slate-900 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-400" />
+                      Forecast Insights & Feasibility
+                    </h5>
+
+                    <div className="space-y-2.5 mt-3">
+                      {recurringBurdenPct >= 100 ? (
+                        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-start gap-2.5">
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="block font-bold">Deficit Warning: Fixed Overhang</strong>
+                            Your recurring commitments alone ({formatCurrency(totalMonthlyRecurring, currency)}) exceed your entire monthly budget ({formatCurrency(currentBudgetAmount, currency)}). Consider reviewing active subscriptions below.
+                          </div>
+                        </div>
+                      ) : projectedMonthlySurplus < 0 ? (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-start gap-2.5">
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="block font-bold">Projected Budget Shortfall</strong>
+                            Under the {spendScenario} scenario, estimated monthly spend ({formatCurrency(projectedMonthlyTotal, currency)}) exceeds your budget by {formatCurrency(Math.abs(projectedMonthlySurplus), currency)}.
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-start gap-2.5">
+                          <Check className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="block font-bold">Budget Feasibility Confirmed</strong>
+                            Your recurring obligations tie up {recurringBurdenPct.toFixed(0)}% of your budget, leaving a healthy discretionary buffer of {formatCurrency(currentBudgetAmount - totalMonthlyRecurring, currency)} each month.
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-3 rounded-xl bg-white/5 light:bg-slate-200/60 border border-white/5 light:border-slate-300 text-xs text-[#cbc3d7] light:text-slate-700 space-y-1.5">
+                        <div className="flex items-center gap-1.5 font-bold text-white light:text-slate-900">
+                          <Sparkles className="w-3.5 h-3.5 text-[#d0bcff] light:text-purple-700" />
+                          <span>{forecastHorizon}-Month Cumulative Outlook:</span>
+                        </div>
+                        <p className="leading-relaxed">
+                          Over the next {forecastHorizon} months, fixed recurring commitments will total approximately{' '}
+                          <strong className="text-white light:text-slate-900">
+                            {formatCurrency(totalMonthlyRecurring * forecastHorizon, currency)}
+                          </strong>
+                          . Total projected spending across all categories is estimated at{' '}
+                          <strong className="text-white light:text-slate-900">
+                            {formatCurrency(projectedMonthlyTotal * forecastHorizon, currency)}
+                          </strong>
+                          {projectedMonthlySurplus >= 0 ? (
+                            <>
+                              , building an estimated cumulative reserve of{' '}
+                              <strong className="text-emerald-400 light:text-emerald-700">
+                                {formatCurrency(projectedMonthlySurplus * forecastHorizon, currency)}
+                              </strong>
+                              .
+                            </>
+                          ) : (
+                            <>
+                              , requiring an additional budget buffer of{' '}
+                              <strong className="text-rose-400 light:text-rose-700">
+                                {formatCurrency(Math.abs(projectedMonthlySurplus) * forecastHorizon, currency)}
+                              </strong>
+                              .
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 light:border-slate-200 flex items-center justify-between text-[11px] text-[#cbc3d7] light:text-slate-500">
+                    <span>Recurring updates reflect instantly</span>
+                    <span className="font-semibold text-[#d0bcff] light:text-purple-700">Live Model</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Category Spending Limits Section */}

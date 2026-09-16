@@ -358,6 +358,7 @@ export default function App() {
                   onAddRecurringExpense={handleAddRecurringExpense}
                   onDeleteRecurringExpense={handleDeleteRecurringExpense}
                   onUpdateUserSettings={handleUpdateUserSettings}
+                  theme={theme}
                 />
               )}
 
