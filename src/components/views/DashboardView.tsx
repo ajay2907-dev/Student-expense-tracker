@@ -33,7 +33,8 @@ import {
   BarChart,
   Bar,
   XAxis,
-  YAxis
+  YAxis,
+  CartesianGrid
 } from 'recharts';
 import { User, Expense, Budget, SavingsGoal, ActiveTab } from '../../types';
 import { formatCurrency } from '../../lib/api';
@@ -424,7 +425,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
         >
           <div className="flex justify-between items-center mb-2">
-            <span className="text-xs font-bold text-[#cbc3d7] light:text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-slate-300 light:text-slate-600 uppercase tracking-wider">
               This Week
             </span>
             <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
@@ -435,8 +436,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h3 className="text-2xl font-extrabold text-white light:text-slate-900">
               {formatCurrency(totalWeekly, currency)}
             </h3>
-            <p className="text-[11px] text-[#cbc3d7] light:text-slate-500 mt-1">
-              Daily Average: <strong className="text-white light:text-slate-800">{formatCurrency(dailyAvg, currency)}</strong>
+            <p className="text-xs text-slate-300 light:text-slate-600 mt-1 font-medium">
+              Daily Average: <strong className="text-white light:text-slate-900 font-bold">{formatCurrency(dailyAvg, currency)}</strong>
             </p>
           </div>
         </motion.div>
@@ -468,10 +469,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-lg text-white light:text-slate-900">Weekly Spending Summary</h3>
-              <p className="text-xs text-[#cbc3d7] light:text-slate-500">Interactive touch breakdown across the current week</p>
+              <p className="text-xs text-slate-300 light:text-slate-600 font-medium mt-0.5">Interactive breakdown across the current week</p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 light:bg-purple-100 text-white light:text-purple-800">
+              <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800/80 light:bg-purple-100 text-purple-200 light:text-purple-800 border border-purple-500/30 light:border-purple-200">
                 This Week: {formatCurrency(totalWeekly, currency)}
               </span>
             </div>
@@ -480,10 +481,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Interactive Touch Day Selector Tabs */}
           <div className="pt-1 pb-1">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold text-[#cbc3d7] light:text-slate-500">
-                Tap day to view transactions & insights:
+              <span className="text-xs font-semibold text-slate-200 light:text-slate-700">
+                Select day to view transactions & insights:
               </span>
-              <span className="text-[11px] text-[#d0bcff] light:text-purple-700 font-bold">
+              <span className="text-xs text-purple-200 light:text-purple-800 font-bold bg-purple-500/20 light:bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-500/30 light:border-purple-200">
                 Daily Avg: {formatCurrency(dailyAvg, currency)}
               </span>
             </div>
@@ -495,31 +496,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     key={d.day}
                     type="button"
                     onClick={() => setSelectedWeeklyDayIndex(idx)}
-                    className={`relative min-h-[50px] py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center transition-all duration-200 select-none active:scale-95 touch-manipulation cursor-pointer ${
+                    className={`relative min-h-[54px] py-2 px-1.5 rounded-2xl flex flex-col items-center justify-center transition-all duration-200 select-none active:scale-95 touch-manipulation cursor-pointer ${
                       isSelected
-                        ? 'bg-gradient-to-tr from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold shadow-lg shadow-[#d0bcff]/25 ring-2 ring-[#d0bcff] light:ring-purple-600 scale-[1.03]'
+                        ? 'bg-purple-600 text-white font-bold shadow-lg shadow-purple-900/30 ring-2 ring-purple-400 light:ring-purple-600 scale-[1.03]'
                         : d.isToday
-                        ? 'bg-white/10 light:bg-purple-50 text-white light:text-purple-900 border border-[#d0bcff]/50 light:border-purple-300 font-semibold'
-                        : 'bg-white/5 light:bg-slate-100 hover:bg-white/10 light:hover:bg-slate-200 text-[#dae2fd] light:text-slate-700 border border-white/5 light:border-slate-200'
+                        ? 'bg-purple-950/40 light:bg-purple-50 text-white light:text-purple-950 border-2 border-purple-400 light:border-purple-300 font-semibold'
+                        : 'bg-slate-800/80 light:bg-white hover:bg-slate-700/80 light:hover:bg-slate-100 text-slate-100 light:text-slate-900 border border-slate-700/80 light:border-slate-200 shadow-xs'
                     }`}
                   >
-                    <span className="text-xs tracking-tight font-bold">{d.day}</span>
-                    <span className="text-[10px] opacity-80">
+                    <span className="text-xs sm:text-sm tracking-tight font-bold text-inherit">{d.day}</span>
+                    <span className={`text-[11px] font-semibold mt-0.5 ${
+                      isSelected ? 'text-purple-100' : 'text-slate-300 light:text-slate-600'
+                    }`}>
                       {d.formattedDate ? d.formattedDate.split(' ')[1] : ''}
                     </span>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    <div className="flex items-center gap-1 mt-1">
                       {d.amount > 0 ? (
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isSelected ? 'bg-[#3c0091]' : 'bg-emerald-400 light:bg-emerald-600'
+                          className={`w-2 h-2 rounded-full ${
+                            isSelected ? 'bg-amber-300' : 'bg-emerald-400 light:bg-emerald-600'
                           }`}
                         />
                       ) : (
-                        <span className="w-1.5 h-1.5 opacity-0" />
+                        <span className="w-2 h-2 opacity-0" />
                       )}
                     </div>
                     {d.isToday && !isSelected && (
-                      <span className="absolute -top-1.5 px-1.5 py-0.2 bg-[#d0bcff] text-[#3c0091] text-[8px] font-black rounded-full shadow-xs">
+                      <span className="absolute -top-2 px-1.5 py-0.5 bg-amber-400 text-slate-950 text-[9px] font-black rounded-full shadow-md tracking-wider">
                         TODAY
                       </span>
                     )}
@@ -541,30 +544,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   }
                 }}
               >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={isLight ? '#e2e8f0' : 'rgba(255,255,255,0.08)'}
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="day"
-                  stroke={isLight ? '#64748b' : '#cbc3d7'}
-                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: isLight ? '#0f172a' : '#f8fafc', fontSize: 12, fontWeight: 600 }}
                 />
                 <YAxis
-                  stroke={isLight ? '#64748b' : '#cbc3d7'}
-                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
+                  tick={{ fill: isLight ? '#334155' : '#cbd5e1', fontSize: 11, fontWeight: 500 }}
                   tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : v)}
                 />
                 <Tooltip
                   cursor={{ fill: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)', radius: 8 }}
                   formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
                   contentStyle={{
-                    backgroundColor: isLight ? '#ffffff' : '#171f33',
-                    borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
+                    backgroundColor: isLight ? '#ffffff' : '#1e293b',
+                    borderColor: isLight ? '#cbd5e1' : '#334155',
                     borderRadius: '12px',
-                    color: isLight ? '#0f172a' : '#fff',
+                    color: isLight ? '#0f172a' : '#ffffff',
                     boxShadow: isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 25px rgba(0,0,0,0.5)',
+                    fontWeight: 600,
                   }}
+                  itemStyle={{ color: isLight ? '#4338ca' : '#c084fc', fontWeight: 700 }}
+                  labelStyle={{ color: isLight ? '#0f172a' : '#ffffff', fontWeight: 700 }}
                 />
                 <Bar
                   dataKey="amount"
@@ -603,25 +612,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
-              className="p-3.5 sm:p-4 rounded-2xl bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 space-y-2.5"
+              className="p-4 rounded-2xl bg-slate-900/80 light:bg-white border border-slate-700/70 light:border-slate-200 space-y-3 shadow-sm"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 light:border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-700/60 light:border-slate-200">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-white light:text-slate-900">
+                  <span className="font-bold text-sm sm:text-base text-white light:text-slate-900">
                     {selectedWeeklyDay.fullDay}, {selectedWeeklyDay.formattedDate}
                   </span>
                   {selectedWeeklyDay.isToday && (
-                    <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-[#d0bcff]/20 text-[#d0bcff] light:bg-purple-100 light:text-purple-700">
+                    <span className="px-2.5 py-0.5 text-[11px] font-extrabold rounded-full bg-purple-500/20 text-purple-300 light:bg-purple-100 light:text-purple-800 border border-purple-400/30">
                       Today
                     </span>
                   )}
                 </div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-base font-extrabold text-white light:text-slate-900">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base sm:text-lg font-extrabold text-white light:text-slate-900">
                     {formatCurrency(selectedWeeklyDay.amount, currency)}
                   </span>
                   {totalWeekly > 0 && selectedWeeklyDay.amount > 0 && (
-                    <span className="text-[11px] text-[#cbc3d7] light:text-slate-500 font-medium">
+                    <span className="text-xs text-slate-300 light:text-slate-600 font-semibold">
                       ({Math.round((selectedWeeklyDay.amount / totalWeekly) * 100)}% of week)
                     </span>
                   )}
@@ -629,45 +638,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               {/* Spending Comparison */}
-              <div className="flex items-center justify-between text-xs text-[#cbc3d7] light:text-slate-600">
-                <span>
+              <div className="flex items-center justify-between text-xs text-slate-300 light:text-slate-600">
+                <div>
                   {selectedWeeklyDay.amount === 0 ? (
-                    <span className="text-slate-400 light:text-slate-500 font-medium">No expenses logged for this day</span>
+                    <span className="text-slate-300 light:text-slate-600 font-medium">No expenses logged for this day</span>
                   ) : selectedWeeklyDay.amount > dailyAvg ? (
-                    <span className="text-amber-400 light:text-amber-600 font-semibold">
+                    <span className="text-amber-300 light:text-amber-700 font-bold flex items-center gap-1">
                       ▲ {formatCurrency(selectedWeeklyDay.amount - dailyAvg, currency)} above daily average
                     </span>
                   ) : (
-                    <span className="text-emerald-400 light:text-emerald-600 font-semibold">
+                    <span className="text-emerald-300 light:text-emerald-700 font-bold flex items-center gap-1">
                       ▼ {formatCurrency(dailyAvg - selectedWeeklyDay.amount, currency)} below daily average
                     </span>
                   )}
-                </span>
-                <span className="text-[11px] font-medium">
+                </div>
+                <span className="text-xs font-semibold text-slate-300 light:text-slate-600">
                   {selectedWeeklyDay.expenses.length} expense{selectedWeeklyDay.expenses.length === 1 ? '' : 's'}
                 </span>
               </div>
 
               {/* Day transactions preview or quick add */}
               {selectedWeeklyDay.expenses.length > 0 ? (
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                   {selectedWeeklyDay.expenses.map((exp) => (
                     <div
                       key={exp.expense_id}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 light:bg-white border border-white/5 light:border-slate-200 text-xs shadow-xs"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 light:bg-slate-50 border border-slate-700/60 light:border-slate-200 text-xs shadow-xs"
                     >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-white/10 light:bg-slate-100 text-[#dae2fd] light:text-slate-700 shrink-0">
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-purple-500/20 light:bg-purple-100 text-purple-200 light:text-purple-800 border border-purple-500/30 light:border-purple-200 shrink-0">
                           {exp.category}
                         </span>
-                        <span className="text-white light:text-slate-800 font-medium truncate">
+                        <span className="text-white light:text-slate-900 font-semibold truncate text-xs sm:text-sm">
                           {exp.description || exp.category}
                         </span>
-                        <span className="text-[10px] text-[#cbc3d7] light:text-slate-400 shrink-0">
+                        <span className="text-xs text-slate-400 light:text-slate-500 shrink-0 font-medium">
                           ({exp.payment_method})
                         </span>
                       </div>
-                      <span className="font-extrabold text-white light:text-slate-900 shrink-0 ml-2">
+                      <span className="font-extrabold text-white light:text-slate-900 shrink-0 ml-3 text-xs sm:text-sm">
                         {formatCurrency(exp.amount, currency)}
                       </span>
                     </div>
@@ -675,8 +684,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ) : (
                 <div className="pt-1 flex items-center justify-between">
-                  <p className="text-xs text-[#cbc3d7] light:text-slate-500">
-                    Zero spending day. Great savings!
+                  <p className="text-xs text-slate-300 light:text-slate-600 font-medium">
+                    Zero spending recorded for this day.
                   </p>
                   <button
                     type="button"
@@ -684,7 +693,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       setQuickDate(selectedWeeklyDay.dateStr);
                       onOpenQuickAdd();
                     }}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/10 light:bg-slate-200 hover:bg-white/20 text-xs font-bold text-white light:text-slate-800 transition-colors flex items-center gap-1.5 active:scale-95 touch-manipulation cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-colors flex items-center gap-1.5 active:scale-95 touch-manipulation cursor-pointer shadow-sm"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>+ Log for {selectedWeeklyDay.day}</span>
