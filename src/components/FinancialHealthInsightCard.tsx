@@ -149,41 +149,41 @@ export const FinancialHealthInsightCard: React.FC<FinancialHealthInsightCardProp
     switch (status) {
       case 'Healthy':
         return {
-          badgeBg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400',
-          scoreColor: 'text-emerald-400',
-          barColor: 'bg-emerald-400',
+          badgeBg: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 light:text-emerald-700 light:bg-emerald-50 light:border-emerald-200',
+          scoreColor: 'text-emerald-400 light:text-emerald-600',
+          barColor: 'bg-emerald-400 light:bg-emerald-500',
           icon: ShieldCheck,
           label: 'Healthy Pace',
         };
       case 'Good':
         return {
-          badgeBg: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400',
-          scoreColor: 'text-cyan-400',
-          barColor: 'bg-cyan-400',
+          badgeBg: 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 light:text-cyan-700 light:bg-cyan-50 light:border-cyan-200',
+          scoreColor: 'text-cyan-400 light:text-cyan-600',
+          barColor: 'bg-cyan-400 light:bg-cyan-500',
           icon: CheckCircle2,
           label: 'Good Trajectory',
         };
       case 'Caution':
         return {
-          badgeBg: 'bg-amber-500/15 border-amber-500/30 text-amber-400',
-          scoreColor: 'text-amber-400',
-          barColor: 'bg-amber-400',
+          badgeBg: 'bg-amber-500/15 border-amber-500/30 text-amber-400 light:text-amber-700 light:bg-amber-50 light:border-amber-200',
+          scoreColor: 'text-amber-400 light:text-amber-600',
+          barColor: 'bg-amber-400 light:bg-amber-500',
           icon: AlertTriangle,
           label: 'Caution / Elevated Burn',
         };
       case 'Critical':
         return {
-          badgeBg: 'bg-rose-500/15 border-rose-500/30 text-rose-400',
-          scoreColor: 'text-rose-400',
-          barColor: 'bg-rose-400',
+          badgeBg: 'bg-rose-500/15 border-rose-500/30 text-rose-400 light:text-rose-700 light:bg-rose-50 light:border-rose-200',
+          scoreColor: 'text-rose-400 light:text-rose-600',
+          barColor: 'bg-rose-400 light:bg-rose-500',
           icon: AlertCircle,
           label: 'Over Budget Alert',
         };
       default:
         return {
-          badgeBg: 'bg-[#d0bcff]/15 border-[#d0bcff]/30 text-[#d0bcff]',
-          scoreColor: 'text-[#d0bcff]',
-          barColor: 'bg-[#d0bcff]',
+          badgeBg: 'bg-[#d0bcff]/15 border-[#d0bcff]/30 text-[#d0bcff] light:text-purple-700 light:bg-purple-50 light:border-purple-200',
+          scoreColor: 'text-[#d0bcff] light:text-purple-700',
+          barColor: 'bg-[#d0bcff] light:bg-purple-500',
           icon: Activity,
           label: 'Analyzing',
         };

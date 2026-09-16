@@ -21,10 +21,22 @@ import { filterExpensesByPreset } from '../../lib/dateUtils';
 interface AnalyticsViewProps {
   user: User;
   expenses: Expense[];
+  theme?: 'dark' | 'light';
 }
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) => {
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses, theme = 'dark' }) => {
+  const isLight = theme === 'light';
   const currency = user.currency || '₹';
+
+  const tooltipStyle = {
+    backgroundColor: isLight ? '#ffffff' : '#171f33',
+    borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    color: isLight ? '#0f172a' : '#fff',
+    boxShadow: isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 25px rgba(0,0,0,0.5)',
+  };
+  const axisStroke = isLight ? '#64748b' : '#cbc3d7';
+  const gridStroke = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)';
 
   // Date Range Preset Filter
   const [preset, setPreset] = useState<DateRangePreset>('all');
@@ -163,22 +175,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              className="bg-black/20 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-white"
+              className="bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-200 rounded-xl px-2.5 py-1 text-xs text-white light:text-slate-900"
             />
-            <span className="text-xs text-[#cbc3d7]">to</span>
+            <span className="text-xs text-[#cbc3d7] light:text-slate-500">to</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              className="bg-black/20 border border-white/10 rounded-xl px-2.5 py-1 text-xs text-white"
+              className="bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-200 rounded-xl px-2.5 py-1 text-xs text-white light:text-slate-900"
             />
           </div>
         )}
       </div>
 
       {filteredExpenses.length === 0 ? (
-        <div className="glass-panel rounded-3xl p-12 text-center text-[#cbc3d7] space-y-3">
-          <p className="text-base font-medium">No expense records found for the selected timeframe.</p>
+        <div className="glass-panel rounded-3xl p-12 text-center text-[#cbc3d7] light:text-slate-500 space-y-3">
+          <p className="text-base font-medium text-white light:text-slate-900">No expense records found for the selected timeframe.</p>
           <p className="text-xs">Try selecting a different date range preset!</p>
         </div>
       ) : (
@@ -186,19 +198,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
           {/* Payment Method Summary Row */}
           <div className="glass-panel rounded-3xl p-6 border border-white/10 space-y-4">
             <h3 className="font-bold text-base text-white light:text-slate-900 flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-amber-400" /> Payment Method Summary
+              <CreditCard className="w-5 h-5 text-amber-400 light:text-amber-600" /> Payment Method Summary
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               {['UPI', 'Cash', 'Credit Card', 'Debit Card', 'Bank Transfer'].map((method) => {
                 const amt = paymentTotals[method] || 0;
                 const pct = totalSpent > 0 ? Math.round((amt / totalSpent) * 100) : 0;
                 return (
-                  <div key={method} className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
-                    <span className="text-[11px] font-semibold text-[#cbc3d7] block">{method}</span>
+                  <div key={method} className="p-3.5 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200">
+                    <span className="text-[11px] font-semibold text-[#cbc3d7] light:text-slate-600 block">{method}</span>
                     <span className="text-base font-extrabold text-white light:text-slate-900 block mt-1">
                       {formatCurrency(amt, currency)}
                     </span>
-                    <span className="text-[10px] text-[#d0bcff] font-medium">{pct}% of total</span>
+                    <span className="text-[10px] text-[#d0bcff] light:text-purple-700 font-bold">{pct}% of total</span>
                   </div>
                 );
               })}
@@ -210,7 +222,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
             {/* 1. Category Distribution Donut */}
             <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col justify-between">
               <h3 className="font-bold text-base text-white light:text-slate-900 mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#d0bcff]" /> Category Spending Distribution
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d0bcff] light:bg-purple-600" /> Category Spending Distribution
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -230,7 +242,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
                     </Pie>
                     <Tooltip
                       formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
-                      contentStyle={{ backgroundColor: '#171f33', borderRadius: '12px', border: 'none', color: '#fff' }}
+                      contentStyle={tooltipStyle}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -240,19 +252,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
             {/* 2. Monthly Spending Bar Chart */}
             <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col justify-between">
               <h3 className="font-bold text-base text-white light:text-slate-900 mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ffb0cd]" /> Monthly Spending Comparison
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ffb0cd] light:bg-pink-500" /> Monthly Spending Comparison
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="month" stroke="#cbc3d7" fontSize={11} />
-                    <YAxis stroke="#cbc3d7" fontSize={11} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                    <XAxis dataKey="month" stroke={axisStroke} fontSize={11} />
+                    <YAxis stroke={axisStroke} fontSize={11} />
                     <Tooltip
                       formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
-                      contentStyle={{ backgroundColor: '#171f33', borderRadius: '12px', border: 'none', color: '#fff' }}
+                      contentStyle={tooltipStyle}
                     />
-                    <Bar dataKey="amount" fill="#d0bcff" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="amount" fill={isLight ? '#7c3aed' : '#d0bcff'} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -261,19 +273,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
             {/* 3. Daily Spending Line Chart */}
             <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col justify-between">
               <h3 className="font-bold text-base text-white light:text-slate-900 mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#adc6ff]" /> Daily Spending Trend
+                <span className="w-2.5 h-2.5 rounded-full bg-[#adc6ff] light:bg-blue-500" /> Daily Spending Trend
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={dailyData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="date" stroke="#cbc3d7" fontSize={11} />
-                    <YAxis stroke="#cbc3d7" fontSize={11} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                    <XAxis dataKey="date" stroke={axisStroke} fontSize={11} />
+                    <YAxis stroke={axisStroke} fontSize={11} />
                     <Tooltip
                       formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
-                      contentStyle={{ backgroundColor: '#171f33', borderRadius: '12px', border: 'none', color: '#fff' }}
+                      contentStyle={tooltipStyle}
                     />
-                    <Line type="monotone" dataKey="amount" stroke="#ffb0cd" strokeWidth={3} dot={{ fill: '#ffb0cd', r: 4 }} />
+                    <Line type="monotone" dataKey="amount" stroke={isLight ? '#ec4899' : '#ffb0cd'} strokeWidth={3} dot={{ fill: isLight ? '#ec4899' : '#ffb0cd', r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -282,19 +294,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
             {/* 4. Payment Method Bar Chart */}
             <div className="glass-panel rounded-3xl p-6 border border-white/10 flex flex-col justify-between">
               <h3 className="font-bold text-base text-white light:text-slate-900 mb-4 flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400" /> Payment Channel Breakdown
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 light:bg-amber-500" /> Payment Channel Breakdown
               </h3>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={paymentData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis type="number" stroke="#cbc3d7" fontSize={11} />
-                    <YAxis dataKey="channel" type="category" stroke="#cbc3d7" fontSize={11} width={90} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                    <XAxis type="number" stroke={axisStroke} fontSize={11} />
+                    <YAxis dataKey="channel" type="category" stroke={axisStroke} fontSize={11} width={90} />
                     <Tooltip
                       formatter={(val: number) => [formatCurrency(val, currency), 'Total']}
-                      contentStyle={{ backgroundColor: '#171f33', borderRadius: '12px', border: 'none', color: '#fff' }}
+                      contentStyle={tooltipStyle}
                     />
-                    <Bar dataKey="amount" fill="#adc6ff" radius={[0, 8, 8, 0]} />
+                    <Bar dataKey="amount" fill={isLight ? '#3b82f6' : '#adc6ff'} radius={[0, 8, 8, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -312,9 +324,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, expenses }) 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {insights.map((text, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-start gap-3">
-                  <Lightbulb className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" />
-                  <p className="text-xs text-white light:text-slate-800 leading-relaxed">{text}</p>
+                <div key={idx} className="p-4 rounded-2xl bg-white/5 light:bg-slate-100 border border-white/5 light:border-slate-200 flex items-start gap-3">
+                  <Lightbulb className="w-5 h-5 text-amber-300 light:text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs text-white light:text-slate-800 leading-relaxed font-medium">{text}</p>
                 </div>
               ))}
             </div>

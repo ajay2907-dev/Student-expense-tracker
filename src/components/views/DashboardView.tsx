@@ -47,7 +47,8 @@ interface DashboardViewProps {
   savingsGoals: SavingsGoal[];
   setActiveTab: (tab: ActiveTab) => void;
   onOpenQuickAdd: () => void;
-  onAddExpense: (expense: Partial<Expense>) => Promise<void> | void;
+  onAddExpense?: (expense: Partial<Expense>) => Promise<void> | void;
+  theme?: 'dark' | 'light';
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -58,7 +59,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setActiveTab,
   onOpenQuickAdd,
   onAddExpense,
+  theme = 'dark',
 }) => {
+  const isLight = theme === 'light';
   const currency = user.currency || '₹';
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -76,14 +79,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     setIsAdding(true);
     try {
-      await onAddExpense({
-        user_id: user.user_id,
-        amount: Number(quickAmount),
-        category: quickCategory,
-        description: quickDesc.trim() || quickCategory,
-        date: quickDate,
-        payment_method: quickPayment,
-      });
+      if (onAddExpense) {
+        await onAddExpense({
+          user_id: user.user_id,
+          amount: Number(quickAmount),
+          category: quickCategory,
+          description: quickDesc.trim() || quickCategory,
+          date: quickDate,
+          payment_method: quickPayment,
+        });
+      }
       setQuickAmount('');
       setQuickDesc('');
       setQuickDate(todayStr);
@@ -123,8 +128,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const todaySpent = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
   const todayCount = todayExpenses.length;
 
-  // 3. Weekly Summary
+  // 3. Weekly Summary & Interactive Touch Selection
   const { weekData, totalWeekly, dailyAvg } = getWeeklyDaysData(expenses, currency);
+
+  const [selectedWeeklyDayIndex, setSelectedWeeklyDayIndex] = useState<number>(() => {
+    const todayIdx = weekData.findIndex((d) => d.isToday);
+    return todayIdx !== -1 ? todayIdx : 0;
+  });
+
+  const selectedWeeklyDay = weekData[selectedWeeklyDayIndex] || weekData[0];
 
   // 4. Category breakdown
   const categoryTotals: Record<string, number> = {};
@@ -435,43 +447,235 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Grid Row 2: Charts (Spending Trend & Category Breakdown) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Weekly Spending Bar Chart */}
-        <div className="lg:col-span-2 glass-panel rounded-3xl p-6 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-2 glass-panel rounded-3xl p-5 sm:p-6 flex flex-col justify-between space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-lg text-white light:text-slate-900">Weekly Spending Summary</h3>
-              <p className="text-xs text-[#cbc3d7] light:text-slate-500">Spending per day for the current week</p>
+              <p className="text-xs text-[#cbc3d7] light:text-slate-500">Interactive touch breakdown across the current week</p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 light:bg-slate-100 text-white light:text-slate-800">
-              This Week: {formatCurrency(totalWeekly, currency)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/10 light:bg-purple-100 text-white light:text-purple-800">
+                This Week: {formatCurrency(totalWeekly, currency)}
+              </span>
+            </div>
           </div>
 
-          <div className="w-full h-56 pt-4">
+          {/* Interactive Touch Day Selector Tabs */}
+          <div className="pt-1 pb-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] font-semibold text-[#cbc3d7] light:text-slate-500">
+                Tap day to view transactions & insights:
+              </span>
+              <span className="text-[11px] text-[#d0bcff] light:text-purple-700 font-bold">
+                Daily Avg: {formatCurrency(dailyAvg, currency)}
+              </span>
+            </div>
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {weekData.map((d, idx) => {
+                const isSelected = idx === selectedWeeklyDayIndex;
+                return (
+                  <button
+                    key={d.day}
+                    type="button"
+                    onClick={() => setSelectedWeeklyDayIndex(idx)}
+                    className={`relative min-h-[50px] py-1.5 px-1 rounded-2xl flex flex-col items-center justify-center transition-all duration-200 select-none active:scale-95 touch-manipulation cursor-pointer ${
+                      isSelected
+                        ? 'bg-gradient-to-tr from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold shadow-lg shadow-[#d0bcff]/25 ring-2 ring-[#d0bcff] light:ring-purple-600 scale-[1.03]'
+                        : d.isToday
+                        ? 'bg-white/10 light:bg-purple-50 text-white light:text-purple-900 border border-[#d0bcff]/50 light:border-purple-300 font-semibold'
+                        : 'bg-white/5 light:bg-slate-100 hover:bg-white/10 light:hover:bg-slate-200 text-[#dae2fd] light:text-slate-700 border border-white/5 light:border-slate-200'
+                    }`}
+                  >
+                    <span className="text-xs tracking-tight font-bold">{d.day}</span>
+                    <span className="text-[10px] opacity-80">
+                      {d.formattedDate ? d.formattedDate.split(' ')[1] : ''}
+                    </span>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {d.amount > 0 ? (
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isSelected ? 'bg-[#3c0091]' : 'bg-emerald-400 light:bg-emerald-600'
+                          }`}
+                        />
+                      ) : (
+                        <span className="w-1.5 h-1.5 opacity-0" />
+                      )}
+                    </div>
+                    {d.isToday && !isSelected && (
+                      <span className="absolute -top-1.5 px-1.5 py-0.2 bg-[#d0bcff] text-[#3c0091] text-[8px] font-black rounded-full shadow-xs">
+                        TODAY
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Touch-Interactive Bar Chart */}
+          <div className="w-full h-52 pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weekData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <XAxis dataKey="day" stroke="#cbc3d7" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#cbc3d7" fontSize={11} tickLine={false} axisLine={false} />
+              <BarChart
+                data={weekData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                onClick={(state) => {
+                  if (state && typeof state.activeTooltipIndex === 'number') {
+                    setSelectedWeeklyDayIndex(state.activeTooltipIndex);
+                  }
+                }}
+              >
+                <XAxis
+                  dataKey="day"
+                  stroke={isLight ? '#64748b' : '#cbc3d7'}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  stroke={isLight ? '#64748b' : '#cbc3d7'}
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : v)}
+                />
                 <Tooltip
+                  cursor={{ fill: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)', radius: 8 }}
                   formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
                   contentStyle={{
-                    backgroundColor: '#171f33',
-                    borderColor: 'rgba(255,255,255,0.1)',
+                    backgroundColor: isLight ? '#ffffff' : '#171f33',
+                    borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
                     borderRadius: '12px',
-                    color: '#fff',
+                    color: isLight ? '#0f172a' : '#fff',
+                    boxShadow: isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 25px rgba(0,0,0,0.5)',
                   }}
                 />
-                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-                  {weekData.map((entry, index) => (
-                    <Cell
-                      key={`bar-${index}`}
-                      fill={entry.isToday ? '#d0bcff' : '#4d8eff'}
-                      opacity={entry.amount > 0 ? 1 : 0.2}
-                    />
-                  ))}
+                <Bar
+                  dataKey="amount"
+                  radius={[8, 8, 2, 2]}
+                  className="cursor-pointer"
+                >
+                  {weekData.map((entry, index) => {
+                    const isSelected = index === selectedWeeklyDayIndex;
+                    let fill = isLight ? '#6366f1' : '#4d8eff';
+                    if (isSelected) {
+                      fill = isLight ? '#7c3aed' : '#d0bcff';
+                    } else if (entry.isToday) {
+                      fill = isLight ? '#8b5cf6' : '#a078ff';
+                    }
+                    const opacity = entry.amount > 0 ? (isSelected ? 1 : 0.8) : (isSelected ? 0.4 : 0.2);
+                    return (
+                      <Cell
+                        key={`bar-${index}`}
+                        fill={fill}
+                        opacity={opacity}
+                        stroke={isSelected ? (isLight ? '#5b21b6' : '#ffffff') : 'transparent'}
+                        strokeWidth={isSelected ? 2 : 0}
+                        className="transition-all duration-200 cursor-pointer"
+                      />
+                    );
+                  })}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Interactive Selected Day Details Panel */}
+          {selectedWeeklyDay && (
+            <motion.div
+              key={selectedWeeklyDay.dateStr}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+              className="p-3.5 sm:p-4 rounded-2xl bg-white/5 light:bg-slate-50 border border-white/10 light:border-slate-200 space-y-2.5"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 light:border-slate-200">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-white light:text-slate-900">
+                    {selectedWeeklyDay.fullDay}, {selectedWeeklyDay.formattedDate}
+                  </span>
+                  {selectedWeeklyDay.isToday && (
+                    <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-[#d0bcff]/20 text-[#d0bcff] light:bg-purple-100 light:text-purple-700">
+                      Today
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-base font-extrabold text-white light:text-slate-900">
+                    {formatCurrency(selectedWeeklyDay.amount, currency)}
+                  </span>
+                  {totalWeekly > 0 && selectedWeeklyDay.amount > 0 && (
+                    <span className="text-[11px] text-[#cbc3d7] light:text-slate-500 font-medium">
+                      ({Math.round((selectedWeeklyDay.amount / totalWeekly) * 100)}% of week)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Spending Comparison */}
+              <div className="flex items-center justify-between text-xs text-[#cbc3d7] light:text-slate-600">
+                <span>
+                  {selectedWeeklyDay.amount === 0 ? (
+                    <span className="text-slate-400 light:text-slate-500 font-medium">No expenses logged for this day</span>
+                  ) : selectedWeeklyDay.amount > dailyAvg ? (
+                    <span className="text-amber-400 light:text-amber-600 font-semibold">
+                      ▲ {formatCurrency(selectedWeeklyDay.amount - dailyAvg, currency)} above daily average
+                    </span>
+                  ) : (
+                    <span className="text-emerald-400 light:text-emerald-600 font-semibold">
+                      ▼ {formatCurrency(dailyAvg - selectedWeeklyDay.amount, currency)} below daily average
+                    </span>
+                  )}
+                </span>
+                <span className="text-[11px] font-medium">
+                  {selectedWeeklyDay.expenses.length} expense{selectedWeeklyDay.expenses.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {/* Day transactions preview or quick add */}
+              {selectedWeeklyDay.expenses.length > 0 ? (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  {selectedWeeklyDay.expenses.map((exp) => (
+                    <div
+                      key={exp.expense_id}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 light:bg-white border border-white/5 light:border-slate-200 text-xs shadow-xs"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-white/10 light:bg-slate-100 text-[#dae2fd] light:text-slate-700 shrink-0">
+                          {exp.category}
+                        </span>
+                        <span className="text-white light:text-slate-800 font-medium truncate">
+                          {exp.description || exp.category}
+                        </span>
+                        <span className="text-[10px] text-[#cbc3d7] light:text-slate-400 shrink-0">
+                          ({exp.payment_method})
+                        </span>
+                      </div>
+                      <span className="font-extrabold text-white light:text-slate-900 shrink-0 ml-2">
+                        {formatCurrency(exp.amount, currency)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="pt-1 flex items-center justify-between">
+                  <p className="text-xs text-[#cbc3d7] light:text-slate-500">
+                    Zero spending day. Great savings!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickDate(selectedWeeklyDay.dateStr);
+                      onOpenQuickAdd();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-white/10 light:bg-slate-200 hover:bg-white/20 text-xs font-bold text-white light:text-slate-800 transition-colors flex items-center gap-1.5 active:scale-95 touch-manipulation cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Log for {selectedWeeklyDay.day}</span>
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Category Breakdown Donut */}
@@ -498,24 +702,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Tooltip
                     formatter={(val: number) => [formatCurrency(val, currency), 'Spent']}
                     contentStyle={{
-                      backgroundColor: '#171f33',
-                      borderColor: 'rgba(255,255,255,0.1)',
+                      backgroundColor: isLight ? '#ffffff' : '#171f33',
+                      borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
                       borderRadius: '12px',
-                      color: '#fff',
+                      color: isLight ? '#0f172a' : '#fff',
+                      boxShadow: isLight ? '0 10px 25px rgba(0,0,0,0.08)' : '0 10px 25px rgba(0,0,0,0.5)',
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute text-center pointer-events-none">
-                <span className="text-[10px] uppercase font-bold text-[#cbc3d7] block">Total</span>
-                <span className="text-base font-extrabold text-white">{formatCurrency(totalMoneySpentAllTime, currency)}</span>
+                <span className="text-[10px] uppercase font-bold text-[#cbc3d7] light:text-slate-500 block">Total</span>
+                <span className="text-base font-extrabold text-white light:text-slate-900">{formatCurrency(totalMoneySpentAllTime, currency)}</span>
               </div>
             </div>
           ) : (
-            <div className="text-center py-12 text-xs text-[#cbc3d7]">No expenses recorded yet.</div>
+            <div className="text-center py-12 text-xs text-[#cbc3d7] light:text-slate-500">No expenses recorded yet.</div>
           )}
 
-          <div className="space-y-1.5 pt-2 border-t border-white/10">
+          <div className="space-y-1.5 pt-2 border-t border-white/10 light:border-slate-200">
             {pieData.slice(0, 3).map((cat) => {
               const pct = totalMoneySpentAllTime > 0 ? Math.round((cat.value / totalMoneySpentAllTime) * 100) : 0;
               return (

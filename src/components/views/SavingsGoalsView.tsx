@@ -108,7 +108,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
 
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>{showCreateForm ? 'Close Form' : 'New Goal'}</span>
@@ -118,51 +118,51 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
       {/* Create New Goal Modal/Panel */}
       {showCreateForm && (
         <form onSubmit={handleCreateGoal} className="glass-panel rounded-3xl p-6 border border-white/10 space-y-4">
-          <h3 className="font-bold text-base text-white">Create New Savings Milestone</h3>
+          <h3 className="font-bold text-base text-white light:text-slate-900">Create New Savings Milestone</h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Goal Name *</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Goal Name *</label>
               <input
                 type="text"
                 required
                 value={goalName}
                 onChange={(e) => setGoalName(e.target.value)}
                 placeholder="e.g. Emergency Fund"
-                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#d0bcff]"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-2xl px-4 py-2.5 text-white light:text-slate-900 text-sm focus:outline-none focus:border-[#d0bcff]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Target Amount ({currency}) *</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Target Amount ({currency}) *</label>
               <input
                 type="number"
                 min="500"
                 required
                 value={targetAmount}
                 onChange={(e) => setTargetAmount(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-[#d0bcff]"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-2xl px-4 py-2.5 text-white light:text-slate-900 font-bold text-sm focus:outline-none focus:border-[#d0bcff]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Initial Saved Amount ({currency})</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Initial Saved Amount ({currency})</label>
               <input
                 type="number"
                 min="0"
                 value={savedAmount}
                 onChange={(e) => setSavedAmount(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#d0bcff]"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-2xl px-4 py-2.5 text-white light:text-slate-900 text-sm focus:outline-none focus:border-[#d0bcff]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Target Date</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Target Date</label>
               <input
                 type="date"
                 value={targetDate}
                 onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-xs focus:outline-none focus:border-[#d0bcff]"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-2xl px-4 py-2.5 text-white light:text-slate-900 text-xs focus:outline-none focus:border-[#d0bcff]"
               />
             </div>
           </div>
@@ -170,7 +170,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-2xl bg-[#d0bcff] text-[#3c0091] font-bold text-sm shadow-md"
+            className="w-full py-3 rounded-2xl bg-[#d0bcff] text-[#3c0091] font-bold text-sm shadow-md cursor-pointer hover:opacity-90 transition-opacity"
           >
             {loading ? 'Creating...' : 'Save Savings Goal'}
           </button>
@@ -219,10 +219,10 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                     <span>
                       {formatCurrency(goal.saved_amount, currency)} / {formatCurrency(goal.target_amount, currency)}
                     </span>
-                    <span className="text-[#adc6ff]">{pct}% Completed</span>
+                    <span className="text-[#adc6ff] light:text-purple-700 font-bold">{pct}% Completed</span>
                   </div>
 
-                  <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden p-0.5">
+                  <div className="w-full h-3 bg-white/10 light:bg-slate-200 rounded-full overflow-hidden p-0.5">
                     <div
                       className="h-full bg-gradient-to-r from-[#adc6ff] to-[#d0bcff] rounded-full shadow-[0_0_10px_rgba(173,198,255,0.5)]"
                       style={{ width: `${pct}%` }}
@@ -230,14 +230,14 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                   </div>
 
                   <p className="text-xs text-[#cbc3d7] light:text-slate-500 text-right">
-                    Remaining needed: <strong className="text-white">{formatCurrency(remainingNeeded, currency)}</strong>
+                    Remaining needed: <strong className="text-white light:text-slate-900">{formatCurrency(remainingNeeded, currency)}</strong>
                   </p>
                 </div>
 
                 {/* Deposit Funds Button */}
                 <button
                   onClick={() => setDepositingGoal(goal)}
-                  className="w-full py-2.5 rounded-xl bg-white/10 light:bg-purple-100 hover:bg-white/20 text-[#d0bcff] light:text-purple-700 font-bold text-xs transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-white/10 light:bg-purple-100 hover:bg-white/20 light:hover:bg-purple-200 text-[#d0bcff] light:text-purple-700 font-bold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Deposit Funds to Goal</span>
@@ -251,14 +251,14 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
       {/* Deposit Funds Modal */}
       {depositingGoal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in">
-          <form onSubmit={handleDepositSubmit} className="glass-panel rounded-3xl p-6 max-w-sm w-full border border-white/10 space-y-4">
-            <h3 className="text-lg font-bold text-white">Deposit to {depositingGoal.goal_name}</h3>
-            <p className="text-xs text-[#cbc3d7]">
+          <form onSubmit={handleDepositSubmit} className="glass-panel light:bg-white rounded-3xl p-6 max-w-sm w-full border border-white/10 space-y-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-white light:text-slate-900">Deposit to {depositingGoal.goal_name}</h3>
+            <p className="text-xs text-[#cbc3d7] light:text-slate-600">
               Current saved: {formatCurrency(depositingGoal.saved_amount, currency)}
             </p>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">
                 Deposit Amount ({currency})
               </label>
               <input
@@ -267,7 +267,7 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
                 required
                 value={depositAdd}
                 onChange={(e) => setDepositAdd(e.target.value)}
-                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 text-white font-bold text-sm"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-4 py-2.5 text-white light:text-slate-900 font-bold text-sm"
               />
             </div>
 
@@ -275,14 +275,14 @@ export const SavingsGoalsView: React.FC<SavingsGoalsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setDepositingGoal(null)}
-                className="px-4 py-2 text-xs font-bold text-[#cbc3d7]"
+                className="px-4 py-2 text-xs font-bold text-[#cbc3d7] light:text-slate-600 hover:text-white light:hover:text-slate-900 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2.5 rounded-xl bg-[#d0bcff] text-[#3c0091] font-bold text-xs"
+                className="px-5 py-2.5 rounded-xl bg-[#d0bcff] text-[#3c0091] font-bold text-xs cursor-pointer hover:opacity-90 transition-opacity"
               >
                 Confirm Deposit
               </button>

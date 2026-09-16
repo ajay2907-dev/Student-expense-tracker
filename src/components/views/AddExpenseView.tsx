@@ -181,14 +181,14 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
               <label className="block text-xs font-bold uppercase tracking-wider text-[#cbc3d7] light:text-slate-600">
                 Merchant / Description *
               </label>
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#d0bcff]">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#d0bcff] light:text-purple-700">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>AI Auto-Categorization</span>
               </div>
             </div>
 
             <div className="relative">
-              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7]" />
+              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7] light:text-slate-500" />
               <input
                 type="text"
                 value={description}
@@ -201,7 +201,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                 type="button"
                 onClick={() => fetchCategorySuggestion(description, true)}
                 disabled={isSuggesting || description.trim().length < 2}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-[#d0bcff]/20 hover:bg-[#d0bcff]/30 text-[#d0bcff] text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-[#d0bcff]/20 light:bg-purple-100 hover:bg-[#d0bcff]/30 light:hover:bg-purple-200 text-[#d0bcff] light:text-purple-700 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 title="Ask Gemini AI to suggest category"
               >
                 {isSuggesting ? (
@@ -220,7 +220,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
 
             {/* Quick Test Chips */}
             <div className="pt-1">
-              <span className="text-[11px] text-[#cbc3d7]/80 light:text-slate-400 mr-2">Try examples:</span>
+              <span className="text-[11px] text-[#cbc3d7]/80 light:text-slate-500 mr-2">Try examples:</span>
               <div className="inline-flex flex-wrap gap-1.5 mt-1">
                 {QUICK_MERCHANT_EXAMPLES.map((ex) => (
                   <button
@@ -230,7 +230,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                       setDescription(ex.text);
                       fetchCategorySuggestion(ex.text, true);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-[11px] text-[#dae2fd] light:text-slate-700 hover:text-white transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-white/5 light:bg-slate-100 hover:bg-white/10 light:hover:bg-slate-200 border border-white/5 light:border-slate-200 text-[11px] text-[#dae2fd] light:text-slate-700 hover:text-white light:hover:text-slate-900 transition-colors cursor-pointer"
                   >
                     {ex.label}
                   </button>
@@ -255,13 +255,13 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-white light:text-slate-900">
-                        Suggested: <span className="text-[#d0bcff] font-extrabold">{aiSuggestion.category}</span>
+                        Suggested: <span className="text-[#d0bcff] light:text-purple-700 font-extrabold">{aiSuggestion.category}</span>
                       </span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-[#cbc3d7] font-medium">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 light:bg-slate-200 text-[#cbc3d7] light:text-slate-700 font-medium">
                         {Math.round(aiSuggestion.confidence * 100)}% match
                       </span>
                       {aiSuggestion.source === 'gemini' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#d0bcff]/20 text-[#d0bcff] font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#d0bcff]/20 light:bg-purple-100 text-[#d0bcff] light:text-purple-700 font-bold">
                           Gemini AI
                         </span>
                       )}
@@ -275,7 +275,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                 </div>
 
                 {category === aiSuggestion.category ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 light:text-emerald-700 bg-emerald-500/10 light:bg-emerald-50 border border-emerald-500/30 light:border-emerald-300 px-3 py-1 rounded-xl">
                     <Check className="w-3.5 h-3.5" />
                     Applied
                   </span>
@@ -283,7 +283,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                   <button
                     type="button"
                     onClick={() => handleApplySuggestion(aiSuggestion.category)}
-                    className="px-3 py-1 rounded-xl bg-[#d0bcff] hover:bg-[#d0bcff]/90 text-[#3c0091] text-xs font-bold transition-all shadow-sm flex items-center gap-1"
+                    className="px-3 py-1 rounded-xl bg-[#d0bcff] hover:bg-[#d0bcff]/90 text-[#3c0091] text-xs font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
                   >
                     <Zap className="w-3 h-3" />
                     Apply {aiSuggestion.category}
@@ -299,7 +299,7 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
               Amount ({currency}) *
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-lg text-[#d0bcff]">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-lg text-[#d0bcff] light:text-purple-700">
                 {currency}
               </span>
               <input
@@ -322,14 +322,14 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                 Category *
               </label>
               {category && (
-                <span className="text-xs text-[#d0bcff] font-semibold">
+                <span className="text-xs text-[#d0bcff] light:text-purple-700 font-semibold">
                   Selected: <strong>{category}</strong>
                 </span>
               )}
             </div>
 
             <div className="relative">
-              <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7]" />
+              <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7] light:text-slate-500" />
               <select
                 value={category}
                 onChange={(e) => handleSelectCategoryManual(e.target.value)}
@@ -353,15 +353,15 @@ export const AddExpenseView: React.FC<AddExpenseViewProps> = ({ user, onAddExpen
                     key={cat}
                     type="button"
                     onClick={() => handleSelectCategoryManual(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       isSelected
                         ? 'bg-[#d0bcff] text-[#3c0091] shadow-md scale-105 font-bold'
                         : isSuggested
-                        ? 'bg-[#d0bcff]/20 text-[#d0bcff] border border-[#d0bcff]/40 hover:bg-[#d0bcff]/30'
-                        : 'bg-white/5 text-[#dae2fd] light:text-slate-700 hover:bg-white/10 border border-white/5'
+                        ? 'bg-[#d0bcff]/20 light:bg-purple-100 text-[#d0bcff] light:text-purple-700 border border-[#d0bcff]/40 light:border-purple-300 hover:bg-[#d0bcff]/30'
+                        : 'bg-white/5 light:bg-slate-100 text-[#dae2fd] light:text-slate-700 hover:bg-white/10 light:hover:bg-slate-200 border border-white/5 light:border-slate-200'
                     }`}
                   >
-                    {isSuggested && !isSelected && <Sparkles className="w-3 h-3 text-[#d0bcff]" />}
+                    {isSuggested && !isSelected && <Sparkles className="w-3 h-3 text-[#d0bcff] light:text-purple-700" />}
                     {cat}
                   </button>
                 );

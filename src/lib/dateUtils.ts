@@ -84,6 +84,7 @@ export function filterExpensesByPreset(
 
 export function getWeeklyDaysData(expenses: Expense[], _currency?: string) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
 
@@ -98,7 +99,16 @@ export function getWeeklyDaysData(expenses: Expense[], _currency?: string) {
     d.setDate(d.getDate() + i);
     const dateStr = d.toISOString().split('T')[0];
     const dayLabel = days[d.getDay()];
-    return { dateStr, dayLabel, amount: 0 };
+    const fullDayLabel = fullDays[d.getDay()];
+    const formattedDate = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return {
+      dateStr,
+      dayLabel,
+      fullDayLabel,
+      formattedDate,
+      amount: 0,
+      expenses: [] as Expense[],
+    };
   });
 
   expenses.forEach((exp) => {
@@ -107,13 +117,19 @@ export function getWeeklyDaysData(expenses: Expense[], _currency?: string) {
     const target = weekDays.find((w) => w.dateStr === expDateStr);
     if (target) {
       target.amount += Number(exp.amount) || 0;
+      target.expenses.push(exp);
     }
   });
 
   const weekData = weekDays.map((w) => ({
+    dateStr: w.dateStr,
     day: w.dayLabel,
+    fullDay: w.fullDayLabel,
+    formattedDate: w.formattedDate,
     amount: Math.round(w.amount * 100) / 100,
     isToday: w.dateStr === todayStr,
+    expenses: w.expenses,
+    count: w.expenses.length,
   }));
 
   const totalWeekly = weekData.reduce((sum, item) => sum + item.amount, 0);

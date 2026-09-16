@@ -77,47 +77,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
-              <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Full Name</label>
+              <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Full Name</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7]" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7] light:text-slate-400" />
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Alex Johnson"
-                  className="w-full bg-black/20 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
+                  className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Email Address</label>
+            <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7]" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7] light:text-slate-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="alex.student@university.edu"
-                className="w-full bg-black/20 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Password</label>
+            <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7]" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#cbc3d7] light:text-slate-400" />
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-black/20 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-white text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
+                className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-200 rounded-2xl pl-11 pr-4 py-3 text-white light:text-slate-900 text-sm focus:outline-none focus:border-[#d0bcff] transition-colors"
               />
             </div>
           </div>
@@ -132,10 +132,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
           </button>
         </form>
 
-        <div className="text-center pt-2 border-t border-white/10">
+        <div className="text-center pt-2 border-t border-white/10 light:border-slate-200">
           <button
             onClick={() => setIsLogin(!isLogin)}
-            className="text-xs text-[#d0bcff] hover:underline font-semibold transition-colors"
+            className="text-xs text-[#d0bcff] light:text-[#6d3bd7] hover:underline font-semibold transition-colors"
           >
             {isLogin ? "Don't have an account? Sign Up" : 'Already registered? Log In'}
           </button>

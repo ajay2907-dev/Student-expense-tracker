@@ -400,25 +400,25 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Amount ({currency})</label>
+                <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Amount ({currency})</label>
                 <input
                   type="number"
                   step="0.01"
                   value={editingExpense.amount}
                   onChange={(e) => setEditingExpense({ ...editingExpense, amount: Number(e.target.value) })}
-                  className="w-full bg-black/20 light:bg-slate-100 border border-white/10 rounded-xl px-4 py-2.5 text-white font-bold"
+                  className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-4 py-2.5 text-white light:text-slate-900 font-bold focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Category</label>
+                <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Category</label>
                 <select
                   value={editingExpense.category}
                   onChange={(e) => setEditingExpense({ ...editingExpense, category: e.target.value })}
-                  className="w-full bg-[#171f33] light:bg-slate-100 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm"
+                  className="w-full bg-[#171f33] light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-4 py-2.5 text-white light:text-slate-900 text-sm focus:outline-none"
                 >
                   {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
+                    <option key={c} value={c} className="bg-[#171f33] text-white">
                       {c}
                     </option>
                   ))}
@@ -427,12 +427,12 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold uppercase text-[#cbc3d7]">Description</label>
+                  <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600">Description</label>
                   <button
                     type="button"
                     onClick={handleSuggestCategoryForEdit}
                     disabled={suggestingEdit || !editingExpense.description?.trim()}
-                    className="text-[11px] text-[#d0bcff] hover:text-[#d0bcff]/80 font-bold flex items-center gap-1 disabled:opacity-40"
+                    className="text-[11px] text-[#d0bcff] light:text-purple-700 hover:text-[#d0bcff]/80 font-bold flex items-center gap-1 disabled:opacity-40"
                   >
                     {suggestingEdit ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                     <span>AI Re-Categorize</span>
@@ -442,29 +442,29 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
                   type="text"
                   value={editingExpense.description}
                   onChange={(e) => setEditingExpense({ ...editingExpense, description: e.target.value })}
-                  className="w-full bg-black/20 light:bg-slate-100 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm"
+                  className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-4 py-2.5 text-white light:text-slate-900 text-sm focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Date</label>
+                  <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Date</label>
                   <input
                     type="date"
                     value={editingExpense.date}
                     onChange={(e) => setEditingExpense({ ...editingExpense, date: e.target.value })}
-                    className="w-full bg-black/20 light:bg-slate-100 border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                    className="w-full bg-black/20 light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-3 py-2 text-white light:text-slate-900 text-xs focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-[#cbc3d7] mb-1">Payment Method</label>
+                  <label className="block text-xs font-bold uppercase text-[#cbc3d7] light:text-slate-600 mb-1">Payment Method</label>
                   <select
                     value={editingExpense.payment_method}
                     onChange={(e) => setEditingExpense({ ...editingExpense, payment_method: e.target.value })}
-                    className="w-full bg-[#171f33] light:bg-slate-100 border border-white/10 rounded-xl px-3 py-2 text-white text-xs"
+                    className="w-full bg-[#171f33] light:bg-slate-100 border border-white/10 light:border-slate-300 rounded-xl px-3 py-2 text-white light:text-slate-900 text-xs focus:outline-none"
                   >
                     {PAYMENT_METHODS.map((pm) => (
-                      <option key={pm} value={pm}>
+                      <option key={pm} value={pm} className="bg-[#171f33] text-white">
                         {pm}
                       </option>
                     ))}
@@ -476,13 +476,13 @@ export const ExpenseHistoryView: React.FC<ExpenseHistoryViewProps> = ({
             <div className="flex items-center justify-end gap-3 pt-3">
               <button
                 onClick={() => setEditingExpense(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#cbc3d7] hover:bg-white/10"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#cbc3d7] light:text-slate-600 hover:bg-white/10 light:hover:bg-slate-100 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-xs shadow-md"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-xs shadow-md cursor-pointer hover:shadow-lg transition-all"
               >
                 Save Changes
               </button>

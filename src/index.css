@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(.light, .light *));
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -148,4 +151,16 @@ html.light .glow-text {
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(208, 188, 255, 0.4);
+}
+
+html.light ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.8);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(109, 59, 215, 0.5);
 }

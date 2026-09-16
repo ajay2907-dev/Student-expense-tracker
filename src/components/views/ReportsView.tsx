@@ -130,7 +130,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
       </div>
 
       {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm flex items-center gap-3">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 light:text-emerald-700 light:bg-emerald-50 text-sm flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           <span>{successMsg}</span>
         </div>
@@ -140,7 +140,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
         {/* CSV Card */}
         <div className="glass-panel glass-panel-hover rounded-3xl p-6 sm:p-8 border border-white/10 flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 light:bg-emerald-100 flex items-center justify-center text-emerald-400 light:text-emerald-700">
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-white light:text-slate-900">Raw CSV Spreadsheet</h3>
@@ -152,7 +152,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
           <button
             onClick={handleDownloadCsv}
             disabled={downloadingCsv}
-            className="w-full py-3.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold text-sm flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3.5 rounded-2xl bg-emerald-500/20 light:bg-emerald-100 hover:bg-emerald-500/30 text-emerald-300 light:text-emerald-800 border border-emerald-500/30 light:border-emerald-300 font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>{downloadingCsv ? 'Generating CSV...' : 'Download CSV File'}</span>
@@ -162,7 +162,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
         {/* PDF Statement Card */}
         <div className="glass-panel glass-panel-hover rounded-3xl p-6 sm:p-8 border border-white/10 flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center text-[#d0bcff]">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 light:bg-purple-100 flex items-center justify-center text-[#d0bcff] light:text-purple-700">
               <FileText className="w-6 h-6" />
             </div>
             <h3 className="font-bold text-lg text-white light:text-slate-900">Official PDF Statement</h3>
@@ -174,7 +174,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
           <button
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#d0bcff] to-[#ffb0cd] text-[#3c0091] font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>{downloadingPdf ? 'Building PDF...' : 'Download PDF Statement'}</span>
@@ -183,7 +183,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ user, expenses, budget
       </div>
 
       <div className="glass-panel rounded-3xl p-6 border border-white/10 flex items-center gap-4">
-        <ShieldCheck className="w-8 h-8 text-[#d0bcff] shrink-0" />
+        <ShieldCheck className="w-8 h-8 text-[#d0bcff] light:text-purple-700 shrink-0" />
         <div>
           <h4 className="font-bold text-sm text-white light:text-slate-900">Verified Privacy Guarantee</h4>
           <p className="text-xs text-[#cbc3d7] light:text-slate-500 mt-0.5">

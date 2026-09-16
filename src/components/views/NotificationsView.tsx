@@ -26,7 +26,7 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
         {unreadCount > 0 && (
           <button
             onClick={onMarkAllRead}
-            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-[#d0bcff] font-bold text-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/10 light:bg-purple-100 hover:bg-white/20 light:hover:bg-purple-200 text-[#d0bcff] light:text-purple-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <CheckCheck className="w-4 h-4" />
             <span>Mark All Read</span>
@@ -46,13 +46,13 @@ export const NotificationsView: React.FC<NotificationsViewProps> = ({
               key={n.notification_id}
               className={`p-4 rounded-2xl border transition-colors flex items-start gap-3.5 ${
                 !n.is_read
-                  ? 'bg-white/10 border-[#d0bcff]/40 shadow-[0_0_15px_rgba(208,188,255,0.15)]'
-                  : 'bg-white/5 border-white/5'
+                  ? 'bg-white/10 light:bg-purple-50/80 border-[#d0bcff]/40 light:border-purple-300 shadow-[0_0_15px_rgba(208,188,255,0.15)]'
+                  : 'bg-white/5 light:bg-slate-50 border-white/5 light:border-slate-200'
               }`}
             >
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  !n.is_read ? 'bg-[#d0bcff] text-[#3c0091]' : 'bg-white/10 text-[#cbc3d7]'
+                  !n.is_read ? 'bg-[#d0bcff] text-[#3c0091]' : 'bg-white/10 light:bg-slate-200 text-[#cbc3d7] light:text-slate-600'
                 }`}
               >
                 <Bell className="w-4 h-4" />

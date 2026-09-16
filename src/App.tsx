@@ -323,6 +323,8 @@ export default function App() {
                   savingsGoals={savingsGoals}
                   setActiveTab={setActiveTab}
                   onOpenQuickAdd={() => setShowQuickAdd(true)}
+                  onAddExpense={handleAddExpense}
+                  theme={theme}
                 />
               )}
 
@@ -341,7 +343,7 @@ export default function App() {
                 />
               )}
 
-              {activeTab === 'analytics' && <AnalyticsView user={user} expenses={expenses} />}
+              {activeTab === 'analytics' && <AnalyticsView user={user} expenses={expenses} theme={theme} />}
 
               {activeTab === 'budget' && (
                 <BudgetView
