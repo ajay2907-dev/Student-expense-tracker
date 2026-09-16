@@ -873,6 +873,76 @@ function ruleBasedCategorySuggestion(text: string): { category: string; confiden
   return { category: "Other", confidence: 0.5, reason: "General transaction expense" };
 }
 
+// Fallback rule engine for Financial Health Insight
+function ruleBasedFinancialHealth(data: any) {
+  const {
+    monthlyBudget = 15000,
+    totalSpent = 0,
+    remainingBudget = 15000,
+    daysPassedInMonth = 15,
+    daysInMonth = 30,
+    topCategory,
+    currency = "₹",
+  } = data || {};
+
+  const budgetPct = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 50;
+  const timeProgressPct = daysInMonth > 0 ? (daysPassedInMonth / daysInMonth) * 100 : 50;
+  const projectedMonthEnd = daysPassedInMonth > 0 ? (totalSpent / daysPassedInMonth) * daysInMonth : totalSpent;
+
+  let status = "Healthy";
+  let score = 88;
+  let title = "Comfortable Spending Pace";
+  let summary = `You have utilized ${budgetPct.toFixed(1)}% of your monthly budget across the first ${daysPassedInMonth} days of the month. Your daily expenditure pacing is well-calibrated.`;
+  const keyObservations = [
+    `Daily run-rate is ${currency}${Math.round(totalSpent / Math.max(1, daysPassedInMonth))}/day with ${currency}${Math.round(remainingBudget)} remaining.`,
+  ];
+  if (topCategory && topCategory.category) {
+    keyObservations.push(`${topCategory.category} is your highest spending bucket (${topCategory.percentage?.toFixed(0) || 30}% of total outflows).`);
+  } else {
+    keyObservations.push("Expenses are evenly distributed across categories.");
+  }
+  const recommendations = [
+    "Maintain your current daily pacing to safeguard a healthy surplus for savings goals.",
+    "Review recurring subscriptions or daily food delivery to preserve flexible cash flow.",
+  ];
+
+  if (budgetPct >= 95 || remainingBudget <= 0) {
+    status = "Critical";
+    score = 35;
+    title = "Budget Limit Exceeded";
+    summary = `You have utilized almost all or more of your allocated budget for this month (${budgetPct.toFixed(1)}% spent). Tightening discretionary purchases is strongly advised.`;
+    recommendations[0] = "Cap non-essential entertainment and retail purchases for the remainder of the month.";
+  } else if (budgetPct > timeProgressPct + 15) {
+    status = "Caution";
+    score = 62;
+    title = "Higher Than Projected Burn Rate";
+    summary = `Your spending velocity (${budgetPct.toFixed(1)}%) is outpacing the calendar progression (${timeProgressPct.toFixed(0)}% through the month). Pacing at this rate projects a month-end total of ${currency}${Math.round(projectedMonthEnd)}.`;
+    recommendations[0] = "Slow discretionary expenses over the next week to bring your pacing back to target.";
+  } else if (budgetPct < timeProgressPct - 10) {
+    status = "Healthy";
+    score = 92;
+    title = "Strong Financial Discipline";
+    summary = `Outstanding pace! You've only spent ${budgetPct.toFixed(1)}% of your budget while ${timeProgressPct.toFixed(0)}% of the month has passed. You are projected to finish with a solid buffer.`;
+    recommendations[0] = "Consider allocating part of your expected surplus into an emergency fund or savings goal.";
+  } else {
+    status = "Good";
+    score = 78;
+    title = "Balanced Budget Trajectory";
+    summary = `Your spending tracks closely with your monthly plan (${budgetPct.toFixed(1)}% used, ${timeProgressPct.toFixed(0)}% elapsed). Keep your current rhythm.`;
+  }
+
+  return {
+    status,
+    score,
+    title,
+    summary,
+    keyObservations,
+    recommendations,
+    source: "rule_fallback",
+    generatedAt: new Date().toISOString(),
+  };
+}
+
 // AI Category Suggestion using Gemini API
 app.post("/api/ai/suggest-category", async (req, res) => {
   const { text, merchant, description } = req.body;
@@ -967,6 +1037,137 @@ Output JSON with:
     ...fallback,
     source: "rule_fallback",
   });
+});
+
+// AI Financial Health Insight using Gemini API
+app.post("/api/ai/financial-health-insight", async (req, res) => {
+  const data = req.body || {};
+  const {
+    currency = "₹",
+    month = new Date().toISOString().substring(0, 7),
+    totalSpent = 0,
+    monthlyBudget = 15000,
+    remainingBudget = 15000,
+    budgetUtilizationPct = 0,
+    daysPassedInMonth = 15,
+    daysInMonth = 30,
+    dailyRunRate = 0,
+    projectedMonthEndSpent = 0,
+    categoryBreakdown = [],
+    topCategory = null,
+    previousMonthSpent,
+    transactionCount = 0,
+  } = data;
+
+  const ai = getGeminiClient();
+  if (ai) {
+    try {
+      const topCategoryStr = topCategory
+        ? `${topCategory.category} (${currency}${topCategory.amount}, ${topCategory.percentage?.toFixed(0) || 0}%)`
+        : "None";
+
+      const breakdownStr = Array.isArray(categoryBreakdown) && categoryBreakdown.length > 0
+        ? categoryBreakdown
+            .map((c: any) => `${c.category}: ${currency}${c.amount} (${c.percentage?.toFixed(0) || 0}%)`)
+            .join(", ")
+        : "No category transactions yet";
+
+      const prompt = `You are a supportive, insightful personal finance coach for university students.
+Analyze this student's monthly spending patterns and budget status:
+- Currency: ${currency}
+- Current Month: ${month}
+- Total Spent So Far: ${currency}${totalSpent}
+- Total Monthly Budget: ${currency}${monthlyBudget}
+- Remaining Budget: ${currency}${remainingBudget} (${budgetUtilizationPct.toFixed(1)}% of budget used)
+- Days Elapsed in Month: ${daysPassedInMonth} out of ${daysInMonth} days (${((daysPassedInMonth / Math.max(1, daysInMonth)) * 100).toFixed(0)}% through the month)
+- Daily Run Rate: ${currency}${dailyRunRate}/day
+- Projected Month-End Total: ${currency}${projectedMonthEndSpent}
+- Top Spending Category: ${topCategoryStr}
+- Category Breakdown: ${breakdownStr}
+- Previous Month Spent: ${previousMonthSpent != null ? `${currency}${previousMonthSpent}` : "No previous month data"}
+- Total Transactions: ${transactionCount}
+
+Generate a concise, motivating "Financial Health Insight" tailored for a university student.
+Rules:
+- status: strictly one of ["Healthy", "Good", "Caution", "Critical"]
+- score: integer 0-100 indicating financial health this month
+- title: punchy 3-5 word headline (e.g., "Pacing Under Budget", "High Weekend Dining", "On Track for Monthly Savings")
+- summary: concise 2-sentence assessment of their current spending pattern and pacing
+- keyObservations: exactly 2 concise, specific bullet points highlighting noteworthy patterns (e.g. food proportion, run rate vs target)
+- recommendations: exactly 2 realistic, practical money-saving tips for college life (e.g. campus discounts, meal prep, subscription audits)`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              status: {
+                type: Type.STRING,
+                enum: ["Healthy", "Good", "Caution", "Critical"],
+                description: "Financial health status level",
+              },
+              score: {
+                type: Type.INTEGER,
+                description: "Health score from 0 to 100",
+              },
+              title: {
+                type: Type.STRING,
+                description: "Punchy 3-5 word headline",
+              },
+              summary: {
+                type: Type.STRING,
+                description: "Concise 2-sentence assessment of monthly spending",
+              },
+              keyObservations: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "2 key pattern observations",
+              },
+              recommendations: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "2 actionable student money tips",
+              },
+            },
+            required: [
+              "status",
+              "score",
+              "title",
+              "summary",
+              "keyObservations",
+              "recommendations",
+            ],
+          },
+        },
+      });
+
+      const responseText = response.text;
+      if (responseText) {
+        const parsed = JSON.parse(responseText.trim());
+        if (parsed && parsed.status && parsed.title && parsed.summary) {
+          return res.json({
+            status: parsed.status,
+            score: typeof parsed.score === "number" ? parsed.score : 80,
+            title: parsed.title,
+            summary: parsed.summary,
+            keyObservations: Array.isArray(parsed.keyObservations) ? parsed.keyObservations : [],
+            recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+            source: "gemini",
+            generatedAt: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (err: any) {
+      console.warn("Gemini API financial health insight error:", err?.message || err);
+    }
+  }
+
+  // Fallback heuristic if Gemini API key is missing or encounters issues
+  const fallback = ruleBasedFinancialHealth(data);
+  return res.json(fallback);
 });
 
 // Start server function

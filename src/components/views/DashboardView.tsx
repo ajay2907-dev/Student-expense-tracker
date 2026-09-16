@@ -37,6 +37,7 @@ import {
 import { User, Expense, Budget, SavingsGoal, ActiveTab } from '../../types';
 import { formatCurrency } from '../../lib/api';
 import { getWeeklyDaysData } from '../../lib/dateUtils';
+import { FinancialHealthInsightCard } from '../FinancialHealthInsightCard';
 
 interface DashboardViewProps {
   user: User;
@@ -169,6 +170,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const prevMonthStr = prevMonthDate.toISOString().substring(0, 7);
   const prevMonthExpenses = expenses.filter((e) => e.date.startsWith(prevMonthStr));
   const prevMonthSpent = prevMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Current Month Category Breakdown & Pacing for Financial Health Insight
+  const currentMonthCategoryTotals: Record<string, number> = {};
+  currentMonthExpenses.forEach((e) => {
+    currentMonthCategoryTotals[e.category] = (currentMonthCategoryTotals[e.category] || 0) + e.amount;
+  });
+
+  const currentMonthCategoryBreakdown = Object.entries(currentMonthCategoryTotals)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, val]) => ({
+      category: name,
+      amount: val,
+      percentage: currentMonthSpent > 0 ? (val / currentMonthSpent) * 100 : 0,
+    }));
+
+  const topMonthlyCategory =
+    currentMonthCategoryBreakdown.length > 0 ? currentMonthCategoryBreakdown[0] : null;
+
+  const now = new Date();
+  const daysPassedInMonth = Math.max(1, now.getDate());
+  const year = now.getFullYear();
+  const monthIndex = now.getMonth();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const dailyRunRate = Math.round(currentMonthSpent / daysPassedInMonth);
+  const projectedMonthEndSpent = Math.round(dailyRunRate * daysInMonth);
+  const budgetUtilizationPct = effectiveBudget > 0 ? (currentMonthSpent / effectiveBudget) * 100 : 0;
 
   // Most used category name
   const mostUsedCategory = pieData.length > 0 ? pieData[0].name : 'N/A';
@@ -370,6 +397,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Financial Health Insight Card */}
+      <FinancialHealthInsightCard
+        user={user}
+        currency={currency}
+        currentMonthStr={currentMonthStr}
+        currentMonthSpent={currentMonthSpent}
+        effectiveBudget={effectiveBudget}
+        remainingBudget={remainingBudget}
+        budgetUtilizationPct={budgetUtilizationPct}
+        daysPassedInMonth={daysPassedInMonth}
+        daysInMonth={daysInMonth}
+        dailyRunRate={dailyRunRate}
+        projectedMonthEndSpent={projectedMonthEndSpent}
+        categoryBreakdown={currentMonthCategoryBreakdown}
+        topCategory={topMonthlyCategory}
+        previousMonthSpent={prevMonthSpent}
+        transactionCount={currentMonthExpenses.length}
+      />
 
       {/* Grid Row 2: Charts (Spending Trend & Category Breakdown) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

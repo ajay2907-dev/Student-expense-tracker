@@ -205,6 +205,34 @@ export interface CategorySuggestionResponse {
   source: 'gemini' | 'rule_fallback';
 }
 
+export interface FinancialHealthInsightResponse {
+  status: 'Healthy' | 'Good' | 'Caution' | 'Critical';
+  score: number;
+  title: string;
+  summary: string;
+  keyObservations: string[];
+  recommendations: string[];
+  source: 'gemini' | 'rule_fallback';
+  generatedAt: string;
+}
+
+export interface SpendingPatternAnalysisInput {
+  currency: string;
+  month: string;
+  totalSpent: number;
+  monthlyBudget: number;
+  remainingBudget: number;
+  budgetUtilizationPct: number;
+  daysPassedInMonth: number;
+  daysInMonth: number;
+  dailyRunRate: number;
+  projectedMonthEndSpent: number;
+  categoryBreakdown: Array<{ category: string; amount: number; percentage: number }>;
+  topCategory: { category: string; amount: number; percentage: number } | null;
+  previousMonthSpent?: number;
+  transactionCount: number;
+}
+
 export async function suggestCategoryApi(text: string, merchant?: string): Promise<CategorySuggestionResponse> {
   const res = await fetch(`${API_BASE}/ai/suggest-category`, {
     method: 'POST',
@@ -216,6 +244,17 @@ export async function suggestCategoryApi(text: string, merchant?: string): Promi
   return data;
 }
 
+export async function fetchFinancialHealthInsightApi(input: SpendingPatternAnalysisInput): Promise<FinancialHealthInsightResponse> {
+  const res = await fetch(`${API_BASE}/ai/financial-health-insight`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to analyze financial health');
+  return data;
+}
+
 // Convenient unified API object
 export const api = {
   register: registerUser,
@@ -223,6 +262,7 @@ export const api = {
   getUserData: fetchUserData,
   fetchUserData: fetchUserData,
   suggestCategory: suggestCategoryApi,
+  getFinancialHealthInsight: fetchFinancialHealthInsightApi,
   getExpenses: async (userId: string) => {
     const data = await fetchUserData(userId);
     return data.expenses;
