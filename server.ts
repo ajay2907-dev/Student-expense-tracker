@@ -943,6 +943,55 @@ function ruleBasedFinancialHealth(data: any) {
   };
 }
 
+// Resilient AI generation with multi-model fallback for transient 503 high demand or capacity limits
+const CANDIDATE_GEMINI_MODELS = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+
+async function generateGeminiContentWithFallback(
+  ai: any,
+  options: {
+    prompt: string;
+    responseSchema?: any;
+    temperature?: number;
+  }
+): Promise<string | null> {
+  for (const model of CANDIDATE_GEMINI_MODELS) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: options.prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: options.responseSchema,
+            temperature: options.temperature ?? 0.2,
+          },
+        });
+        if (response && response.text) {
+          return response.text;
+        }
+      } catch (err: any) {
+        const msg = String(err?.message || err || "");
+        const isTransient =
+          msg.includes("503") ||
+          msg.includes("429") ||
+          msg.includes("high demand") ||
+          msg.includes("UNAVAILABLE") ||
+          msg.includes("RESOURCE_EXHAUSTED") ||
+          msg.includes("overloaded");
+
+        if (isTransient && attempt === 1) {
+          // Brief pause for temporary spike to clear
+          await new Promise((r) => setTimeout(r, 600));
+          continue;
+        }
+        // Move on to next candidate model
+        break;
+      }
+    }
+  }
+  return null;
+}
+
 // AI Category Suggestion using Gemini API
 app.post("/api/ai/suggest-category", async (req, res) => {
   const { text, merchant, description } = req.body;
@@ -978,43 +1027,38 @@ Output JSON with:
 - confidence: number between 0.0 and 1.0
 - reason: concise explanation (under 10 words) why this category fits`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              category: {
-                type: Type.STRING,
-                enum: [
-                  "Food",
-                  "Transportation",
-                  "Education",
-                  "Shopping",
-                  "Entertainment",
-                  "Personal",
-                  "Mobile/Internet",
-                  "Other",
-                ],
-                description: "The most fitting category",
-              },
-              confidence: {
-                type: Type.NUMBER,
-                description: "Confidence from 0 to 1",
-              },
-              reason: {
-                type: Type.STRING,
-                description: "Short reason for category",
-              },
+      const responseText = await generateGeminiContentWithFallback(ai, {
+        prompt,
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            category: {
+              type: Type.STRING,
+              enum: [
+                "Food",
+                "Transportation",
+                "Education",
+                "Shopping",
+                "Entertainment",
+                "Personal",
+                "Mobile/Internet",
+                "Other",
+              ],
+              description: "The most fitting category",
             },
-            required: ["category", "confidence", "reason"],
+            confidence: {
+              type: Type.NUMBER,
+              description: "Confidence from 0 to 1",
+            },
+            reason: {
+              type: Type.STRING,
+              description: "Short reason for category",
+            },
           },
+          required: ["category", "confidence", "reason"],
         },
       });
 
-      const responseText = response.text;
       if (responseText) {
         const parsed = JSON.parse(responseText.trim());
         if (parsed && parsed.category) {
@@ -1026,12 +1070,12 @@ Output JSON with:
           });
         }
       }
-    } catch (err: any) {
-      console.warn("Gemini API category suggestion error:", err?.message || err);
+    } catch {
+      // Graceful fallback to rule heuristic on any parse or unexpected failure
     }
   }
 
-  // Fallback heuristic if Gemini API key is unset or error occurs
+  // Fallback heuristic if Gemini API key is unset or unavailable
   const fallback = ruleBasedCategorySuggestion(inputStr);
   return res.json({
     ...fallback,
@@ -1096,55 +1140,50 @@ Rules:
 - keyObservations: exactly 2 concise, specific bullet points highlighting noteworthy patterns (e.g. food proportion, run rate vs target)
 - recommendations: exactly 2 realistic, practical money-saving tips for college life (e.g. campus discounts, meal prep, subscription audits)`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              status: {
-                type: Type.STRING,
-                enum: ["Healthy", "Good", "Caution", "Critical"],
-                description: "Financial health status level",
-              },
-              score: {
-                type: Type.INTEGER,
-                description: "Health score from 0 to 100",
-              },
-              title: {
-                type: Type.STRING,
-                description: "Punchy 3-5 word headline",
-              },
-              summary: {
-                type: Type.STRING,
-                description: "Concise 2-sentence assessment of monthly spending",
-              },
-              keyObservations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "2 key pattern observations",
-              },
-              recommendations: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "2 actionable student money tips",
-              },
+      const responseText = await generateGeminiContentWithFallback(ai, {
+        prompt,
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            status: {
+              type: Type.STRING,
+              enum: ["Healthy", "Good", "Caution", "Critical"],
+              description: "Financial health status level",
             },
-            required: [
-              "status",
-              "score",
-              "title",
-              "summary",
-              "keyObservations",
-              "recommendations",
-            ],
+            score: {
+              type: Type.INTEGER,
+              description: "Health score from 0 to 100",
+            },
+            title: {
+              type: Type.STRING,
+              description: "Punchy 3-5 word headline",
+            },
+            summary: {
+              type: Type.STRING,
+              description: "Concise 2-sentence assessment of monthly spending",
+            },
+            keyObservations: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "2 key pattern observations",
+            },
+            recommendations: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "2 actionable student money tips",
+            },
           },
+          required: [
+            "status",
+            "score",
+            "title",
+            "summary",
+            "keyObservations",
+            "recommendations",
+          ],
         },
       });
 
-      const responseText = response.text;
       if (responseText) {
         const parsed = JSON.parse(responseText.trim());
         if (parsed && parsed.status && parsed.title && parsed.summary) {
@@ -1160,12 +1199,12 @@ Rules:
           });
         }
       }
-    } catch (err: any) {
-      console.warn("Gemini API financial health insight error:", err?.message || err);
+    } catch {
+      // Graceful fallback to rule heuristic on any unexpected failure
     }
   }
 
-  // Fallback heuristic if Gemini API key is missing or encounters issues
+  // Fallback heuristic if Gemini API key is missing or model is temporarily unavailable
   const fallback = ruleBasedFinancialHealth(data);
   return res.json(fallback);
 });
