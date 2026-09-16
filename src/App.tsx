@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 
@@ -299,118 +300,131 @@ export default function App() {
             <p className="text-lg font-bold">Please log in to view your expense tracker.</p>
             <button
               onClick={() => setShowAuthModal(true)}
-              className="px-6 py-3 rounded-2xl bg-[#d0bcff] text-[#3c0091] font-bold text-sm"
+              className="px-6 py-3 rounded-2xl bg-[#d0bcff] text-[#3c0091] font-bold text-sm hover:opacity-90 active:scale-95 transition-all"
             >
               Open Login Screen
             </button>
           </div>
         ) : (
-          <>
-            {activeTab === 'dashboard' && (
-              <DashboardView
-                user={user}
-                expenses={expenses}
-                budgets={budgets}
-                savingsGoals={savingsGoals}
-                setActiveTab={setActiveTab}
-                onOpenQuickAdd={() => setShowQuickAdd(true)}
-              />
-            )}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full"
+            >
+              {activeTab === 'dashboard' && (
+                <DashboardView
+                  user={user}
+                  expenses={expenses}
+                  budgets={budgets}
+                  savingsGoals={savingsGoals}
+                  setActiveTab={setActiveTab}
+                  onOpenQuickAdd={() => setShowQuickAdd(true)}
+                />
+              )}
 
-            {activeTab === 'add_expense' && (
-              <AddExpenseView user={user} onAddExpense={handleAddExpense} />
-            )}
+              {activeTab === 'add_expense' && (
+                <AddExpenseView user={user} onAddExpense={handleAddExpense} />
+              )}
 
-            {activeTab === 'expense_history' && (
-              <ExpenseHistoryView
-                user={user}
-                expenses={expenses}
-                onUpdateExpense={handleUpdateExpense}
-                onDeleteExpense={handleDeleteExpense}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-              />
-            )}
+              {activeTab === 'expense_history' && (
+                <ExpenseHistoryView
+                  user={user}
+                  expenses={expenses}
+                  onUpdateExpense={handleUpdateExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                />
+              )}
 
-            {activeTab === 'analytics' && <AnalyticsView user={user} expenses={expenses} />}
+              {activeTab === 'analytics' && <AnalyticsView user={user} expenses={expenses} />}
 
-            {activeTab === 'budget' && (
-              <BudgetView
-                user={user}
-                budgets={budgets}
-                categoryLimits={categoryLimits}
-                recurringExpenses={recurringExpenses}
-                expenses={expenses}
-                onSaveBudget={handleSaveBudget}
-                onSaveCategoryLimit={handleSaveCategoryLimit}
-                onDeleteCategoryLimit={handleDeleteCategoryLimit}
-                onAddRecurringExpense={handleAddRecurringExpense}
-                onDeleteRecurringExpense={handleDeleteRecurringExpense}
-                onUpdateUserSettings={handleUpdateUserSettings}
-              />
-            )}
+              {activeTab === 'budget' && (
+                <BudgetView
+                  user={user}
+                  budgets={budgets}
+                  categoryLimits={categoryLimits}
+                  recurringExpenses={recurringExpenses}
+                  expenses={expenses}
+                  onSaveBudget={handleSaveBudget}
+                  onSaveCategoryLimit={handleSaveCategoryLimit}
+                  onDeleteCategoryLimit={handleDeleteCategoryLimit}
+                  onAddRecurringExpense={handleAddRecurringExpense}
+                  onDeleteRecurringExpense={handleDeleteRecurringExpense}
+                  onUpdateUserSettings={handleUpdateUserSettings}
+                />
+              )}
 
-            {activeTab === 'savings_goals' && (
-              <SavingsGoalsView
-                user={user}
-                savingsGoals={savingsGoals}
-                onAddSavingsGoal={handleAddSavingsGoal}
-                onUpdateSavingsGoal={handleUpdateSavingsGoal}
-                onDeleteSavingsGoal={handleDeleteSavingsGoal}
-              />
-            )}
+              {activeTab === 'savings_goals' && (
+                <SavingsGoalsView
+                  user={user}
+                  savingsGoals={savingsGoals}
+                  onAddSavingsGoal={handleAddSavingsGoal}
+                  onUpdateSavingsGoal={handleUpdateSavingsGoal}
+                  onDeleteSavingsGoal={handleDeleteSavingsGoal}
+                />
+              )}
 
-            {activeTab === 'comparison' && <ComparisonView user={user} expenses={expenses} />}
+              {activeTab === 'comparison' && <ComparisonView user={user} expenses={expenses} />}
 
-            {activeTab === 'reports' && (
-              <ReportsView user={user} expenses={expenses} budgets={budgets} />
-            )}
+              {activeTab === 'reports' && (
+                <ReportsView user={user} expenses={expenses} budgets={budgets} />
+              )}
 
-            {activeTab === 'notifications' && (
-              <NotificationsView
-                notifications={notifications}
-                onMarkAllRead={handleMarkNotificationsRead}
-              />
-            )}
+              {activeTab === 'notifications' && (
+                <NotificationsView
+                  notifications={notifications}
+                  onMarkAllRead={handleMarkNotificationsRead}
+                />
+              )}
 
-            {activeTab === 'profile' && (
-              <ProfileView user={user} onUpdateUserSettings={handleUpdateUserSettings} />
-            )}
+              {activeTab === 'profile' && (
+                <ProfileView user={user} onUpdateUserSettings={handleUpdateUserSettings} />
+              )}
 
-            {activeTab === 'settings' && (
-              <SettingsView
-                user={user}
-                theme={theme}
-                toggleTheme={toggleTheme}
-                onSeedDemoData={handleSeedDemoData}
-                onClearData={handleClearData}
-                onDeleteAccount={handleDeleteAccount}
-              />
-            )}
-          </>
+              {activeTab === 'settings' && (
+                <SettingsView
+                  user={user}
+                  theme={theme}
+                  toggleTheme={toggleTheme}
+                  onSeedDemoData={handleSeedDemoData}
+                  onClearData={handleClearData}
+                  onDeleteAccount={handleDeleteAccount}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         )}
       </main>
 
       {/* Quick Add Modal */}
-      {showQuickAdd && user && (
-        <QuickAddModal
-          user={user}
-          onClose={() => setShowQuickAdd(false)}
-          onAddExpense={handleAddExpense}
-        />
-      )}
+      <AnimatePresence>
+        {showQuickAdd && user && (
+          <QuickAddModal
+            user={user}
+            onClose={() => setShowQuickAdd(false)}
+            onAddExpense={handleAddExpense}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal
-          onSuccess={(loggedUser) => {
-            setUser(loggedUser);
-            localStorage.setItem('student_tracker_user', JSON.stringify(loggedUser));
-            setShowAuthModal(false);
-            loadAppData(loggedUser);
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {showAuthModal && (
+          <AuthModal
+            onSuccess={(loggedUser) => {
+              setUser(loggedUser);
+              localStorage.setItem('student_tracker_user', JSON.stringify(loggedUser));
+              setShowAuthModal(false);
+              loadAppData(loggedUser);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

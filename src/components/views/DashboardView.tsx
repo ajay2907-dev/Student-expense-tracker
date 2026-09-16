@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   TrendingUp,
   Wallet,
@@ -308,7 +309,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Top 4 Summary Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {/* Total Spent Current Month */}
-        <div
+        <motion.div
+          whileHover={{ y: -3 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
           onClick={() => setActiveTab('analytics')}
           className="glass-panel glass-panel-hover rounded-2xl p-5 cursor-pointer group flex flex-col justify-between"
         >
@@ -328,10 +332,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {currentMonthExpenses.length} transactions in {currentMonthStr}
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Budget & Remaining */}
-        <div
+        <motion.div
+          whileHover={{ y: -3 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
           onClick={() => setActiveTab('budget')}
           className="glass-panel glass-panel-hover rounded-2xl p-5 cursor-pointer group flex flex-col justify-between"
         >
@@ -355,10 +362,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Today's Spending */}
-        <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <motion.div
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+          className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
+        >
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-bold text-[#cbc3d7] light:text-slate-500 uppercase tracking-wider">
               Today's Spending
@@ -375,10 +386,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Number of expenses today: <strong className="text-white light:text-slate-800">{todayCount}</strong>
             </p>
           </div>
-        </div>
+        </motion.div>
 
         {/* Weekly Spending */}
-        <div className="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+        <motion.div
+          whileHover={{ y: -3 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+          className="glass-panel rounded-2xl p-5 flex flex-col justify-between"
+        >
           <div className="flex justify-between items-center mb-2">
             <span className="text-xs font-bold text-[#cbc3d7] light:text-slate-500 uppercase tracking-wider">
               This Week
@@ -395,7 +410,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Daily Average: <strong className="text-white light:text-slate-800">{formatCurrency(dailyAvg, currency)}</strong>
             </p>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* AI Financial Health Insight Card */}

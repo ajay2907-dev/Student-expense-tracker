@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Sparkles,
   RefreshCw,
@@ -250,37 +251,58 @@ export const FinancialHealthInsightCard: React.FC<FinancialHealthInsightCardProp
         </div>
       </div>
 
-      {/* Loading Skeleton */}
-      {loading && !insight && (
-        <div className="py-10 text-center space-y-3 animate-pulse">
-          <div className="w-12 h-12 rounded-2xl bg-[#d0bcff]/20 mx-auto flex items-center justify-center text-[#d0bcff]">
-            <RefreshCw className="w-6 h-6 animate-spin" />
-          </div>
-          <p className="text-sm font-semibold text-white light:text-slate-800">
-            Gemini AI is analyzing your monthly spending patterns...
-          </p>
-          <p className="text-xs text-[#cbc3d7]">
-            Evaluating daily run-rate, category distributions, and month-end projections
-          </p>
-        </div>
-      )}
-
-      {/* Error State */}
-      {error && !insight && (
-        <div className="py-6 text-center space-y-2">
-          <p className="text-sm text-rose-400">{error}</p>
-          <button
-            onClick={() => fetchInsight(true)}
-            className="text-xs font-bold text-[#d0bcff] underline"
+      {/* Content States */}
+      <AnimatePresence mode="wait">
+        {loading && !insight && (
+          <motion.div
+            key="insight-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="py-10 text-center space-y-3 animate-pulse"
           >
-            Try again
-          </button>
-        </div>
-      )}
+            <div className="w-12 h-12 rounded-2xl bg-[#d0bcff]/20 mx-auto flex items-center justify-center text-[#d0bcff]">
+              <RefreshCw className="w-6 h-6 animate-spin" />
+            </div>
+            <p className="text-sm font-semibold text-white light:text-slate-800">
+              Gemini AI is analyzing your monthly spending patterns...
+            </p>
+            <p className="text-xs text-[#cbc3d7]">
+              Evaluating daily run-rate, category distributions, and month-end projections
+            </p>
+          </motion.div>
+        )}
 
-      {/* Main Insight Content */}
-      {insight && (
-        <div className="pt-5 space-y-5">
+        {/* Error State */}
+        {error && !insight && (
+          <motion.div
+            key="insight-error"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="py-6 text-center space-y-2"
+          >
+            <p className="text-sm text-rose-400">{error}</p>
+            <button
+              onClick={() => fetchInsight(true)}
+              className="text-xs font-bold text-[#d0bcff] underline"
+            >
+              Try again
+            </button>
+          </motion.div>
+        )}
+
+        {/* Main Insight Content */}
+        {insight && (
+          <motion.div
+            key="insight-content"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="pt-5 space-y-5"
+          >
           {/* Top Section: Health Score & Executive Summary */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
             {/* Health Score Gauge Container */}
@@ -409,8 +431,9 @@ export const FinancialHealthInsightCard: React.FC<FinancialHealthInsightCardProp
               })}
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 };

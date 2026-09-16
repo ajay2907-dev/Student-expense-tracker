@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Search, Bell, HelpCircle, Sun, Moon, Menu, CheckCheck, Wallet } from 'lucide-react';
 import { User, Notification, ActiveTab } from '../types';
 
@@ -104,56 +105,64 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Notifications Dropdown Modal */}
-          {showNotifMenu && (
-            <div className="absolute right-0 mt-3 w-72 sm:w-96 glass-panel light:bg-white/95 rounded-2xl p-4 shadow-2xl border border-white/10 light:border-slate-200 z-50 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 light:border-slate-200">
-                <h3 className="font-bold text-sm text-white light:text-slate-800">Notifications</h3>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={() => {
-                      onMarkNotificationsRead();
-                      setShowNotifMenu(false);
-                    }}
-                    className="text-xs text-[#d0bcff] light:text-purple-600 hover:underline flex items-center gap-1 font-medium"
-                  >
-                    <CheckCheck className="w-3.5 h-3.5" /> Mark all read
-                  </button>
-                )}
-              </div>
-
-              <div className="max-h-72 overflow-y-auto space-y-2 mt-3">
-                {notifications.length === 0 ? (
-                  <p className="text-xs text-[#cbc3d7] light:text-slate-500 text-center py-6">No notifications yet.</p>
-                ) : (
-                  notifications.slice(0, 5).map((n) => (
-                    <div
-                      key={n.notification_id}
-                      className={`p-3 rounded-xl border text-xs transition-colors ${
-                        !n.is_read
-                          ? 'bg-white/10 light:bg-purple-50 border-[#d0bcff]/40 light:border-purple-200'
-                          : 'bg-white/5 light:bg-slate-50 border-white/5 light:border-slate-100'
-                      }`}
-                    >
-                      <p className="text-white light:text-slate-800 font-medium leading-relaxed">{n.message}</p>
-                      <span className="text-[10px] text-[#cbc3d7] light:text-slate-400 mt-1 block">
-                        {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <button
-                onClick={() => {
-                  setActiveTab('notifications');
-                  setShowNotifMenu(false);
-                }}
-                className="w-full text-center text-xs text-[#d0bcff] light:text-purple-600 font-semibold pt-3 mt-2 border-t border-white/10 light:border-slate-200 hover:underline block"
+          <AnimatePresence>
+            {showNotifMenu && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 mt-3 w-72 sm:w-96 glass-panel light:bg-white/95 rounded-2xl p-4 shadow-2xl border border-white/10 light:border-slate-200 z-50 origin-top-right"
               >
-                View All Notifications →
-              </button>
-            </div>
-          )}
+                <div className="flex items-center justify-between pb-3 border-b border-white/10 light:border-slate-200">
+                  <h3 className="font-bold text-sm text-white light:text-slate-800">Notifications</h3>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={() => {
+                        onMarkNotificationsRead();
+                        setShowNotifMenu(false);
+                      }}
+                      className="text-xs text-[#d0bcff] light:text-purple-600 hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2 mt-3">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-[#cbc3d7] light:text-slate-500 text-center py-6">No notifications yet.</p>
+                  ) : (
+                    notifications.slice(0, 5).map((n) => (
+                      <div
+                        key={n.notification_id}
+                        className={`p-3 rounded-xl border text-xs transition-colors ${
+                          !n.is_read
+                            ? 'bg-white/10 light:bg-purple-50 border-[#d0bcff]/40 light:border-purple-200'
+                            : 'bg-white/5 light:bg-slate-50 border-white/5 light:border-slate-100'
+                        }`}
+                      >
+                        <p className="text-white light:text-slate-800 font-medium leading-relaxed">{n.message}</p>
+                        <span className="text-[10px] text-[#cbc3d7] light:text-slate-400 mt-1 block">
+                          {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('notifications');
+                    setShowNotifMenu(false);
+                  }}
+                  className="w-full text-center text-xs text-[#d0bcff] light:text-purple-600 font-semibold pt-3 mt-2 border-t border-white/10 light:border-slate-200 hover:underline block"
+                >
+                  View All Notifications →
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Help / Settings Button */}

@@ -1,12 +1,22 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: 'Hanken Grotesk', 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   code, pre, .font-mono {
     font-family: 'Geist', monospace;
+  }
+
+  button, a {
+    touch-action: manipulation;
   }
 }
 
@@ -18,17 +28,22 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .glass-panel-hover {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.25s ease,
+              border-color 0.25s ease,
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
 }
 
 .glass-panel-hover:hover {
   background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(208, 188, 255, 0.3);
-  box-shadow: 0 8px 32px rgba(208, 188, 255, 0.15);
-  transform: translateY(-2px);
+  border-color: rgba(208, 188, 255, 0.35);
+  box-shadow: 0 10px 35px rgba(208, 188, 255, 0.18);
+  transform: translateY(-3px);
 }
 
 /* Light theme overrides */
@@ -48,7 +63,8 @@ html.light .glass-panel {
 html.light .glass-panel-hover:hover {
   background: rgba(255, 255, 255, 0.95);
   border-color: rgba(109, 59, 215, 0.4);
-  box-shadow: 0 8px 25px rgba(109, 59, 215, 0.12);
+  box-shadow: 0 10px 30px rgba(109, 59, 215, 0.14);
+  transform: translateY(-3px);
 }
 
 /* Animated Floating Blobs */
